@@ -4,20 +4,20 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-type Model struct {
+type RootModel struct {
 	width  int
 	height int
 }
 
-func NewModel() Model {
-	return Model{}
+func NewRootModel() RootModel {
+	return RootModel{}
 }
 
-func (m Model) Init() tea.Cmd {
+func (m RootModel) Init() tea.Cmd {
 	return nil
 }
 
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if IsQuitKey(msg) {
@@ -32,6 +32,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m Model) View() string {
+func (m RootModel) View() string {
 	return "Hello, world!"
 }
