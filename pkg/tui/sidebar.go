@@ -1,8 +1,8 @@
 package tui
 
 import (
-	"github.com/charmbracelet/lipgloss"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type SidebarModel struct {
@@ -31,7 +31,7 @@ func (m SidebarModel) Update(msg tea.Msg) (SidebarModel, tea.Cmd) {
 		if !m.focused {
 			return m, nil
 		}
-		
+
 		switch msg.String() {
 		case "up", "k":
 			if m.selected > 0 {
@@ -43,7 +43,7 @@ func (m SidebarModel) Update(msg tea.Msg) (SidebarModel, tea.Cmd) {
 			}
 		}
 	}
-	
+
 	return m, nil
 }
 
@@ -51,11 +51,11 @@ func (m SidebarModel) View() string {
 	if len(m.items) == 0 {
 		return "No items"
 	}
-	
+
 	var items []string
 	for i, item := range m.items {
 		style := lipgloss.NewStyle()
-		
+
 		if m.selected == i {
 			// Highlight selected item
 			style = style.
@@ -73,8 +73,22 @@ func (m SidebarModel) View() string {
 			items = append(items, style.Render("  "+item))
 		}
 	}
-	
-	return lipgloss.JoinVertical(lipgloss.Left, items...)
+
+	content := lipgloss.JoinVertical(lipgloss.Left, items...)
+
+	// Apply border styling based on focus state
+	borderStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder(), true).
+		Width(m.width).
+		Height(m.height)
+
+	if m.focused {
+		borderStyle = borderStyle.BorderForeground(lipgloss.Color("39"))
+	} else {
+		borderStyle = borderStyle.BorderForeground(lipgloss.Color("240"))
+	}
+
+	return borderStyle.Render(content)
 }
 
 func (m *SidebarModel) SetFocus(focused bool) {

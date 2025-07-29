@@ -1,8 +1,8 @@
 package tui
 
 import (
-	"github.com/charmbracelet/lipgloss"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type ContentModel struct {
@@ -29,27 +29,41 @@ func (m ContentModel) Update(msg tea.Msg) (ContentModel, tea.Cmd) {
 		if !m.focused {
 			return m, nil
 		}
-		
+
 		// Handle content-specific key events here
 		switch msg.String() {
 		case "enter":
 			m.content += "\nNew line added!"
 		}
 	}
-	
+
 	return m, nil
 }
 
 func (m ContentModel) View() string {
-	style := lipgloss.NewStyle()
-	
+	contentStyle := lipgloss.NewStyle()
+
 	if m.focused {
-		style = style.Foreground(lipgloss.Color("15"))
+		contentStyle = contentStyle.Foreground(lipgloss.Color("15"))
 	} else {
-		style = style.Foreground(lipgloss.Color("245"))
+		contentStyle = contentStyle.Foreground(lipgloss.Color("245"))
 	}
-	
-	return style.Render(m.content)
+
+	content := contentStyle.Render(m.content)
+
+	// Apply border styling based on focus state
+	borderStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder(), true).
+		Width(m.width).
+		Height(m.height)
+
+	if m.focused {
+		borderStyle = borderStyle.BorderForeground(lipgloss.Color("39"))
+	} else {
+		borderStyle = borderStyle.BorderForeground(lipgloss.Color("240"))
+	}
+
+	return borderStyle.Render(content)
 }
 
 func (m *ContentModel) SetFocus(focused bool) {

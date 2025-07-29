@@ -77,7 +77,7 @@ func NewRootModel() RootModel {
 	return RootModel{
 		sidebar:  sidebar,
 		content:  content,
-		focusIdx: 0,
+		focusIdx: 1, // 1 for content focus
 		help:     h,
 		keys:     keys,
 	}
@@ -110,15 +110,17 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Update help model width
 		m.help.Width = msg.Width
 
-		// Calculate responsive sidebar width with min/max bounds and breakpoints
-		sidebarWidth := m.calculateSidebarWidth()
+		// Calculate responsive sidebar width
+		sidebarWidth := m.width / 3 // Default to 1/3 of width
 		contentWidth := m.width - sidebarWidth
 
 		// Reserve space for help bar at bottom
 		availableHeight := m.height - 1
 
-		m.sidebar.SetSize(sidebarWidth, availableHeight)
-		m.content.SetSize(contentWidth, availableHeight)
+		// Account for border space when setting component sizes
+		borderPadding := 2 // 1 character border on each side
+		m.sidebar.SetSize(sidebarWidth-borderPadding, availableHeight-borderPadding)
+		m.content.SetSize(contentWidth-borderPadding, availableHeight-borderPadding)
 	}
 
 	// Update child models
@@ -133,45 +135,12 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m RootModel) View() string {
-	sidebarWidth := m.calculateSidebarWidth()
-	contentWidth := m.width - sidebarWidth
-	availableHeight := m.height - 1 // Reserve space for help bar
-
-	// Get views from child models
+	// Get views from child models (they handle their own styling now)
 	sidebarView := m.sidebar.View()
 	contentView := m.content.View()
 
-	// Create sidebar style with border
-	sidebarStyle := lipgloss.NewStyle().
-		Width(sidebarWidth-1).     // Account for 1-char border
-		Height(availableHeight-2). // Account for top/bottom border
-		Border(lipgloss.RoundedBorder()).
-		Padding(0, 1)
-
-	if m.focusIdx == 0 { // Sidebar focused
-		sidebarStyle = sidebarStyle.BorderForeground(lipgloss.Color("39"))
-	} else {
-		sidebarStyle = sidebarStyle.BorderForeground(lipgloss.Color("240"))
-	}
-
-	// Create content style with border
-	contentStyle := lipgloss.NewStyle().
-		Width(contentWidth-1).     // Account for 1-char border
-		Height(availableHeight-2). // Account for top/bottom border
-		Border(lipgloss.RoundedBorder()).
-		Padding(0, 1)
-
-	if m.focusIdx == 1 { // Content focused
-		contentStyle = contentStyle.BorderForeground(lipgloss.Color("39"))
-	} else {
-		contentStyle = contentStyle.BorderForeground(lipgloss.Color("240"))
-	}
-
-	// Apply styles and join horizontally
-	styledSidebar := sidebarStyle.Render(sidebarView)
-	styledContent := contentStyle.Render(contentView)
-
-	mainView := lipgloss.JoinHorizontal(lipgloss.Top, styledSidebar, styledContent)
+	// Simple horizontal layout - no styling, just positioning
+	mainView := lipgloss.JoinHorizontal(lipgloss.Top, sidebarView, contentView)
 
 	// Create help view
 	helpView := m.help.View(m.keys)
@@ -183,37 +152,4 @@ func (m RootModel) View() string {
 
 	// Join main view and help vertically
 	return lipgloss.JoinVertical(lipgloss.Left, mainView, styledHelp)
-}
-
-func (m RootModel) calculateSidebarWidth() int {
-	const (
-		minWidth = 25 // Minimum sidebar width (increased to match lazygit)
-		maxWidth = 60 // Maximum sidebar width
-	)
-
-	// Based on lazygit proportions - roughly 1/3 of screen width
-	var targetRatio float64
-	switch {
-	case m.width < 80: // Very narrow terminals
-		targetRatio = 0.4 // 40% of width
-	case m.width < 120: // Narrow terminals
-		targetRatio = 0.35 // 35% of width
-	case m.width < 160: // Medium terminals
-		targetRatio = 0.33 // 33% of width (lazygit-like)
-	default: // Wide terminals
-		targetRatio = 0.3 // 30% of width
-	}
-
-	// Calculate width based on ratio
-	calculatedWidth := int(float64(m.width) * targetRatio)
-
-	// Apply min/max bounds
-	if calculatedWidth < minWidth {
-		return minWidth
-	}
-	if calculatedWidth > maxWidth {
-		return maxWidth
-	}
-
-	return calculatedWidth
 }

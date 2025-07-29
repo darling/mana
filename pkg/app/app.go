@@ -8,9 +8,9 @@ import (
 
 func New() *cli.Command {
 	return &cli.Command{
-		Name:        "mana",
-		Usage:       "An llm client for the terminal",
-		Action:      cmd.DefaultAction,
+		Name:   "mana",
+		Usage:  "An llm client for the terminal",
+		Action: cmd.DefaultAction,
 		Commands: []*cli.Command{
 			{
 				Name:   "version",
