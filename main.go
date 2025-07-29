@@ -1,25 +1,30 @@
 package main
 
 import (
-	"github.com/alecthomas/kong"
+	"context"
+	"log"
+	"os"
+
+	"github.com/urfave/cli/v3"
 
 	"github.com/darling/mana/cmd"
 )
 
 func main() {
-	var cli cmd.CLI
+	app := &cli.Command{
+		Name:        "mana",
+		Usage:       "An llm client for the terminal",
+		Action:      cmd.DefaultAction,
+		Commands: []*cli.Command{
+			{
+				Name:   "version",
+				Usage:  "Show the current version",
+				Action: cmd.VersionAction,
+			},
+		},
+	}
 
-	ctx := kong.Parse(
-		&cli,
-		kong.Name("mana"),
-		kong.Description("An llm client for the terminal"),
-		kong.ConfigureHelp(kong.HelpOptions{
-			Compact: true,
-			Summary: true,
-		}),
-	)
-
-	err := ctx.Run()
-
-	ctx.FatalIfErrorf(err)
+	if err := app.Run(context.Background(), os.Args); err != nil {
+		log.Fatal(err)
+	}
 }
