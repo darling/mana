@@ -41,7 +41,23 @@ func (m ContentModel) Update(msg tea.Msg) (ContentModel, tea.Cmd) {
 }
 
 func (m ContentModel) View() string {
-	contentStyle := lipgloss.NewStyle()
+	borderStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder(), true)
+
+	if m.focused {
+		borderStyle = borderStyle.BorderForeground(lipgloss.Color("39"))
+	} else {
+		borderStyle = borderStyle.BorderForeground(lipgloss.Color("240"))
+	}
+
+	h, v := borderStyle.GetFrameSize()
+
+	innerWidth := m.width - h
+	innerHeight := m.height - v
+
+	contentStyle := lipgloss.NewStyle().
+		Width(innerWidth).
+		Height(innerHeight)
 
 	if m.focused {
 		contentStyle = contentStyle.Foreground(lipgloss.Color("15"))
@@ -50,18 +66,6 @@ func (m ContentModel) View() string {
 	}
 
 	content := contentStyle.Render(m.content)
-
-	// Apply border styling based on focus state
-	borderStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder(), true).
-		Width(m.width).
-		Height(m.height)
-
-	if m.focused {
-		borderStyle = borderStyle.BorderForeground(lipgloss.Color("39"))
-	} else {
-		borderStyle = borderStyle.BorderForeground(lipgloss.Color("240"))
-	}
 
 	return borderStyle.Render(content)
 }
