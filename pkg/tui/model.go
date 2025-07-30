@@ -7,11 +7,12 @@ import (
 )
 
 type keyMap struct {
-	Up    key.Binding
-	Down  key.Binding
-	Tab   key.Binding
-	Quit  key.Binding
-	Enter key.Binding
+	Up       key.Binding
+	Down     key.Binding
+	Tab      key.Binding
+	Quit     key.Binding
+	Enter    key.Binding
+	Settings key.Binding
 }
 
 var keys = keyMap{
@@ -35,6 +36,10 @@ var keys = keyMap{
 		key.WithKeys("enter"),
 		key.WithHelp("enter", "select"),
 	),
+	Settings: key.NewBinding(
+		key.WithKeys("s"),
+		key.WithHelp("s", "settings"),
+	),
 }
 
 type RootModel struct {
@@ -43,6 +48,7 @@ type RootModel struct {
 	sidebar   SidebarModel
 	content   ContentModel
 	statusbar StatusbarModel
+	dialogs   DialogModel
 	focusIdx  int
 	keys      keyMap
 }
@@ -59,6 +65,7 @@ func NewRootModel() RootModel {
 		sidebar:   sidebar,
 		content:   content,
 		statusbar: statusbar,
+		dialogs:   NewDialogModel(),
 		focusIdx:  1,
 		keys:      keys,
 	}
@@ -72,6 +79,11 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
+	case OpenDialogMsg:
+		_, cmd := m.dialogs.Update(msg)
+		cmds = append(cmds, cmd)
+		return m, tea.Batch(cmds...)
+
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, m.keys.Tab):
@@ -82,7 +94,10 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.content.Pane.focused = m.focusIdx == 1
 
 			return m, nil
-
+		case key.Matches(msg, m.keys.Settings):
+			return m, func() tea.Msg {
+				return OpenDialogMsg{Model: NewConfigDialog()}
+			}
 		case key.Matches(msg, m.keys.Quit):
 			return m, tea.Quit
 		}
@@ -90,6 +105,7 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		m.dialogs.SetSize(msg.Width, msg.Height)
 
 		statusbarHeight := 1
 		mainViewHeight := m.height - statusbarHeight
@@ -109,7 +125,24 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.content.Pane.height = mainViewHeight
 		m.content.Pane.handleResize(contentWidth, mainViewHeight)
 
-		return m, nil
+		if m.dialogs.HasDialogs() {
+			// Forward resize to top dialog
+			if top := m.dialogs.dialogs[len(m.dialogs.dialogs)-1]; top != nil {
+				var cmd tea.Cmd
+				top, cmd = top.Update(msg)
+				m.dialogs.dialogs[len(m.dialogs.dialogs)-1] = top
+				cmds = append(cmds, cmd)
+			}
+		}
+
+		return m, tea.Batch(cmds...)
+	}
+
+	// Dialog focus precedence
+	if m.dialogs.HasDialogs() {
+		_, cmd := m.dialogs.Update(msg)
+		cmds = append(cmds, cmd)
+		return m, tea.Batch(cmds...)
 	}
 
 	var sbCmd, ctCmd, stCmd tea.Cmd
@@ -136,5 +169,16 @@ func (m RootModel) View() string {
 
 	statusbarView := m.statusbar.View()
 
-	return lipgloss.JoinVertical(lipgloss.Left, mainView, statusbarView)
+	baseView := lipgloss.JoinVertical(lipgloss.Left, mainView, statusbarView)
+
+	// Layer dialogs if any exist
+	if m.dialogs.HasDialogs() {
+		dialogView := m.dialogs.View()
+		return lipgloss.Place(
+			m.width, m.height,
+			lipgloss.Center, lipgloss.Center,
+			dialogView,
+		)
+	}
+	return baseView
 }
