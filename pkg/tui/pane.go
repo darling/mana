@@ -8,9 +8,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-const BORDER_COLOR = "240"
-const FOCUSED_BORDER_COLOR = "39"
-
 type Pane struct {
 	focused bool
 
@@ -65,11 +62,11 @@ func (p *Pane) SetContent(innerContent string) {
 }
 
 func (p *Pane) Render() string {
-	borderColor := BORDER_COLOR
+	borderColor := BorderNormal()
 	if p.focused {
-		borderColor = FOCUSED_BORDER_COLOR
+		borderColor = BorderFocused()
 	}
-	styled := p.style.BorderForeground(lipgloss.Color(borderColor))
+	styled := p.style.BorderForeground(borderColor)
 
 	titleStr := p.title
 	if p.jumpNum > 0 {
@@ -84,10 +81,10 @@ func (p *Pane) Render() string {
 	contentStyle := lipgloss.NewStyle().
 		Width(innerWidth).
 		Height(innerHeight).
-		Foreground(lipgloss.AdaptiveColor{Light: "15", Dark: "15"})
+		Foreground(ContentFgActive())
 
 	if !p.focused {
-		contentStyle = contentStyle.Foreground(lipgloss.AdaptiveColor{Light: "245", Dark: "245"})
+		contentStyle = contentStyle.Foreground(ContentFgInactive())
 	}
 
 	if titleStr == "" {
@@ -96,7 +93,7 @@ func (p *Pane) Render() string {
 
 	renderedContent := contentStyle.Render(p.content)
 
-	fillStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(borderColor))
+	fillStyle := lipgloss.NewStyle().Foreground(borderColor)
 	titleStyle := fillStyle.Bold(p.focused).Italic(p.focused).Padding(0, 1)
 
 	titleStyled := titleStyle.Render(titleStr)
@@ -135,7 +132,7 @@ func (p *Pane) Render() string {
 
 	sideStyle := lipgloss.NewStyle().
 		Border(borderDef, false, true, true, true).
-		BorderForeground(lipgloss.Color(borderColor))
+		BorderForeground(borderColor)
 
 	sidesContent := sideStyle.Render(renderedContent)
 

@@ -6,13 +6,14 @@ import (
 )
 
 type StatusbarModel struct {
-	width   int
-	message string
+	width          int
+	helpMessage    string
+	rightComponent string
 }
 
 func NewStatusbarModel() StatusbarModel {
 	return StatusbarModel{
-		message: "tab: switch focus • q: quit • ↑/↓: navigate • enter: select",
+		helpMessage: "tab: switch focus • q: quit • ↑/↓: navigate • enter: select",
 	}
 }
 
@@ -29,18 +30,43 @@ func (m StatusbarModel) Update(msg tea.Msg) (StatusbarModel, tea.Cmd) {
 }
 
 func (m StatusbarModel) View() string {
-	style := lipgloss.NewStyle().
-		Width(m.width).
-		Foreground(lipgloss.Color("240")).
+	// Define styles
+	baseStyle := lipgloss.NewStyle().
+		Background(StatusBarBg()).
+		Foreground(StatusBarFg()).
+		Height(1)
+
+	leftStyle := baseStyle.Copy().
+		Align(lipgloss.Left).
 		Padding(0, 1)
 
-	return style.Render(m.message)
+	rightStyle := baseStyle.Copy().
+		Align(lipgloss.Right).
+		Padding(0, 1)
+
+	// Calculate widths - right component gets what it needs, left gets the rest
+	rightWidth := len(m.rightComponent) + 2 // +2 for padding
+	if rightWidth < 2 {
+		rightWidth = 2 // minimum for empty padding
+	}
+	leftWidth := m.width - rightWidth
+
+	// Create content
+	leftContent := leftStyle.Width(leftWidth).Render(m.helpMessage)
+	rightContent := rightStyle.Width(rightWidth).Render(m.rightComponent)
+
+	// Join sections horizontally
+	return lipgloss.JoinHorizontal(lipgloss.Top, leftContent, rightContent)
 }
 
-func (m *StatusbarModel) SetMessage(message string) {
-	m.message = message
+func (m *StatusbarModel) SetHelpMessage(message string) {
+	m.helpMessage = message
 }
 
 func (m *StatusbarModel) SetSize(width int) {
 	m.width = width
+}
+
+func (m *StatusbarModel) SetRightComponent(component string) {
+	m.rightComponent = component
 }
