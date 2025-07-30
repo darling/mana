@@ -19,11 +19,11 @@ func (m ContentModel) Init() tea.Cmd { return nil }
 
 func (m ContentModel) Update(msg tea.Msg) (ContentModel, tea.Cmd) {
 	var cmd tea.Cmd
-	
+
 	// Forward messages to the pane model
 	updatedPane, paneCmd := m.pane.Update(msg)
 	m.pane = updatedPane.(*PaneModel)
-	
+
 	if !m.pane.focused {
 		return m, paneCmd
 	}
@@ -43,4 +43,3 @@ func (m ContentModel) Update(msg tea.Msg) (ContentModel, tea.Cmd) {
 func (m ContentModel) View() string {
 	return m.pane.View()
 }
-

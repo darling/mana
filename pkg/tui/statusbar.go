@@ -36,19 +36,16 @@ func (m StatusbarModel) View() string {
 		Foreground(StatusBarFg()).
 		Height(1)
 
-	leftStyle := baseStyle.Copy().
+	leftStyle := baseStyle.
 		Align(lipgloss.Left).
 		Padding(0, 1)
 
-	rightStyle := baseStyle.Copy().
+	rightStyle := baseStyle.
 		Align(lipgloss.Right).
 		Padding(0, 1)
 
 	// Calculate widths - right component gets what it needs, left gets the rest
-	rightWidth := len(m.rightComponent) + 2 // +2 for padding
-	if rightWidth < 2 {
-		rightWidth = 2 // minimum for empty padding
-	}
+	rightWidth := max(len(m.rightComponent)+2, 2)
 	leftWidth := m.width - rightWidth
 
 	// Create content
@@ -70,3 +67,4 @@ func (m *StatusbarModel) SetSize(width int) {
 func (m *StatusbarModel) SetRightComponent(component string) {
 	m.rightComponent = component
 }
+
