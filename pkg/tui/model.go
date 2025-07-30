@@ -43,7 +43,7 @@ type RootModel struct {
 	sidebar   SidebarModel
 	content   ContentModel
 	statusbar StatusbarModel
-	focusIdx  int // 0 for sidebar, 1 for content
+	focusIdx  int
 	keys      keyMap
 }
 
@@ -52,51 +52,39 @@ func NewRootModel() RootModel {
 	content := NewContentModel()
 	statusbar := NewStatusbarModel()
 
-	// Start with content focused.
-	// Since this is initialization, we can set state directly.
-	content.pane.focused = true
+	sidebar.Pane.focused = false
+	content.Pane.focused = true
 
 	return RootModel{
 		sidebar:   sidebar,
 		content:   content,
 		statusbar: statusbar,
-		focusIdx:  1, // 1 for content focus
+		focusIdx:  1,
 		keys:      keys,
 	}
 }
 
 func (m RootModel) Init() tea.Cmd {
-	return tea.Batch(m.sidebar.Init(), m.content.Init(), m.statusbar.Init())
+	return nil
 }
 
 func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
-	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
+		case key.Matches(msg, m.keys.Tab):
+
+			m.focusIdx = (m.focusIdx + 1) % 2
+
+			m.sidebar.Pane.focused = m.focusIdx == 0
+			m.content.Pane.focused = m.focusIdx == 1
+
+			return m, nil
+
 		case key.Matches(msg, m.keys.Quit):
 			return m, tea.Quit
-		case key.Matches(msg, m.keys.Tab):
-			m.focusIdx = (m.focusIdx + 1) % 2
-			var targetID string
-			if m.focusIdx == 0 {
-				targetID = "sidebar"
-			} else {
-				targetID = "content"
-			}
-			// Send a targeted message to focus the correct pane.
-			return m, func() tea.Msg { return FocusPaneMsg(targetID) }
-		}
-
-	// This case allows the RootModel to track which pane is focused,
-	// even when focus is changed by a mouse click.
-	case FocusPaneMsg:
-		if string(msg) == "sidebar" {
-			m.focusIdx = 0
-		} else {
-			m.focusIdx = 1
 		}
 
 	case tea.WindowSizeMsg:
@@ -105,32 +93,37 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		statusbarHeight := 1
 		mainViewHeight := m.height - statusbarHeight
-
 		sidebarWidth := int(float64(m.width) * 0.3)
+		if sidebarWidth < 20 {
+			sidebarWidth = 20
+		}
 		contentWidth := m.width - sidebarWidth
 
-		// Update statusbar directly
 		m.statusbar.SetSize(m.width)
 
-		// Send specific size messages to the child panes.
-		m.sidebar, cmd = m.sidebar.Update(PaneSizeMsg{Width: sidebarWidth, Height: mainViewHeight})
-		cmds = append(cmds, cmd)
+		m.sidebar.Pane.width = sidebarWidth
+		m.sidebar.Pane.height = mainViewHeight
+		m.sidebar.Pane.handleResize(sidebarWidth, mainViewHeight)
 
-		m.content, cmd = m.content.Update(PaneSizeMsg{Width: contentWidth, Height: mainViewHeight})
-		cmds = append(cmds, cmd)
+		m.content.Pane.width = contentWidth
+		m.content.Pane.height = mainViewHeight
+		m.content.Pane.handleResize(contentWidth, mainViewHeight)
 
-		return m, tea.Batch(cmds...)
+		return m, nil
 	}
 
-	// For all other messages, propagate them to children.
-	m.sidebar, cmd = m.sidebar.Update(msg)
-	cmds = append(cmds, cmd)
+	var sbCmd, ctCmd, stCmd tea.Cmd
 
-	m.content, cmd = m.content.Update(msg)
-	cmds = append(cmds, cmd)
+	if m.focusIdx == 0 {
+		m.sidebar, sbCmd = m.sidebar.Update(msg)
+		cmds = append(cmds, sbCmd)
+	} else {
+		m.content, ctCmd = m.content.Update(msg)
+		cmds = append(cmds, ctCmd)
+	}
 
-	m.statusbar, cmd = m.statusbar.Update(msg)
-	cmds = append(cmds, cmd)
+	m.statusbar, stCmd = m.statusbar.Update(msg)
+	cmds = append(cmds, stCmd)
 
 	return m, tea.Batch(cmds...)
 }
@@ -138,7 +131,10 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m RootModel) View() string {
 	sidebarView := m.sidebar.View()
 	contentView := m.content.View()
+
 	mainView := lipgloss.JoinHorizontal(lipgloss.Top, sidebarView, contentView)
+
 	statusbarView := m.statusbar.View()
+
 	return lipgloss.JoinVertical(lipgloss.Left, mainView, statusbarView)
 }

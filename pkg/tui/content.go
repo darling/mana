@@ -1,45 +1,39 @@
 package tui
 
 import (
+	"strings"
+
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 type ContentModel struct {
-	pane *PaneModel
+	Pane
+	history []string
 }
 
 func NewContentModel() ContentModel {
 	initialContent := "Welcome to main content!\n\nThis area will display dynamic content."
 	return ContentModel{
-		pane: NewPane("content", "Chat", initialContent),
+		Pane:    NewPane("Chat", initialContent),
+		history: []string{},
 	}
 }
 
-func (m ContentModel) Init() tea.Cmd { return nil }
-
 func (m ContentModel) Update(msg tea.Msg) (ContentModel, tea.Cmd) {
-	var cmd tea.Cmd
-
-	// Forward messages to the pane model
-	updatedPane, paneCmd := m.pane.Update(msg)
-	m.pane = updatedPane.(*PaneModel)
-
-	if !m.pane.focused {
-		return m, paneCmd
-	}
-
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if msg.String() == "enter" {
-			// Use message-based approach for content updates
-			newContent := m.pane.content + "\nNew line added!"
-			cmd = func() tea.Msg { return PaneContentMsg(newContent) }
+		if msg.String() == "enter" && m.focused {
+			m.history = append(m.history, "User input")
+			content := strings.Join(m.history, "\n")
+			m.Pane.content = content
+			m.Pane.viewport.SetContent(content)
 		}
 	}
-
-	return m, tea.Batch(paneCmd, cmd)
+	var cmd tea.Cmd
+	m.Pane, cmd = (&m.Pane).Update(msg)
+	return m, cmd
 }
 
 func (m ContentModel) View() string {
-	return m.pane.View()
+	return m.Pane.View()
 }

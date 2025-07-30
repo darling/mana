@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"fmt"
-	"math"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/viewport"
@@ -10,82 +8,47 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-type PaneModel struct {
-	id      string // <-- Added: Unique ID for the pane
+type Pane struct {
 	focused bool
-
-	title         string
-	titlePosition lipgloss.Position
-	jumpNum       int
-
-	width  int
-	height int
-
+	title   string
 	content string
-
-	style lipgloss.Style
-
+	width   int
+	height  int
 	viewport viewport.Model
 }
 
-// Pane messages
+// Messages for pane communication
 type (
-	PaneContentMsg string
-	// Renamed from PaneFocusMsg to be more specific and avoid conflicts.
-	// This message carries the ID of the pane to be focused.
-	FocusPaneMsg string
-	PaneSizeMsg  struct{ Width, Height int }
+	SetContentMsg struct{ Content string }
+	FocusMsg     struct{ Focused bool }
+	SizeMsg      struct{ Width, Height int }
 )
 
-// NewPane now accepts an ID.
-func NewPane(id, title, innerContent string) *PaneModel {
-	pane := &PaneModel{
-		id:            id, // <-- Added: Store the ID
-		focused:       false,
-		title:         title,
-		titlePosition: lipgloss.Left,
-		jumpNum:       0,
-		content:       innerContent,
-		style: lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder(), true),
+func NewPane(title, content string) Pane {
+	pane := Pane{
+		focused:  false,
+		title:    title,
+		content:  content,
 		viewport: viewport.New(0, 0),
 	}
 
 	pane.viewport.SetContent(pane.content)
-
 	return pane
 }
 
-func (p *PaneModel) SetTitle(title string, position lipgloss.Position) {
-	p.title = title
-	p.titlePosition = position
-}
-
-func (p *PaneModel) SetJumpNum(num int) {
-	p.jumpNum = num
-}
-
-func (p *PaneModel) Init() tea.Cmd { return nil }
-
-func (p *PaneModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmds []tea.Cmd
+func (p *Pane) Update(msg tea.Msg) (Pane, tea.Cmd) {
 	var cmd tea.Cmd
-
 	switch msg := msg.(type) {
-	// THIS CASE IS REMOVED. RootModel will send a specific PaneSizeMsg instead.
-	// case tea.WindowSizeMsg:
-	//     p.handleResize(msg.Width, msg.Height)
-
-	case PaneContentMsg:
-		p.content = string(msg)
+	case SetContentMsg:
+		p.content = msg.Content
 		p.viewport.SetContent(p.content)
-		p.viewport.GotoBottom() // Go to bottom on new content
 
-	// This pane will set its focus state based on whether its ID matches the message.
-	case FocusPaneMsg:
-		p.focused = (p.id == string(msg))
+	case FocusMsg:
+		p.focused = msg.Focused
 
-	case PaneSizeMsg:
+	case SizeMsg:
+		p.width = msg.Width
+		p.height = msg.Height
 		p.handleResize(msg.Width, msg.Height)
 
 	case tea.KeyMsg:
@@ -94,31 +57,22 @@ func (p *PaneModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.MouseMsg:
-		// Pass to viewport first for its internal handling (like scrolling).
 		p.viewport, cmd = p.viewport.Update(msg)
-		cmds = append(cmds, cmd)
-
-		// Then, handle our custom mouse logic (like focus on click).
-		cmd = p.handleMouse(msg)
-		cmds = append(cmds, cmd)
 	}
-
-	return p, tea.Batch(cmds...)
+	return *p, cmd
 }
 
-func (p *PaneModel) View() string {
+func (p *Pane) View() string {
 	borderColor := BorderNormal()
 	if p.focused {
 		borderColor = BorderFocused()
 	}
-	styled := p.style.BorderForeground(borderColor)
+	
+	style := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder(), true).
+		BorderForeground(borderColor)
 
-	titleStr := p.title
-	if p.jumpNum > 0 {
-		titleStr = fmt.Sprintf("[%d] %s", p.jumpNum, titleStr)
-	}
-
-	h, v := styled.GetFrameSize()
+	h, v := style.GetFrameSize()
 	borderDef := lipgloss.RoundedBorder()
 	innerWidth := max(0, p.width-h)
 	innerHeight := max(0, p.height-v)
@@ -132,8 +86,9 @@ func (p *PaneModel) View() string {
 		contentStyle = contentStyle.Foreground(ContentFgInactive())
 	}
 
+	titleStr := p.title
 	if titleStr == "" {
-		return styled.Width(p.width).Height(p.height).Render(contentStyle.Render(p.viewport.View()))
+		return style.Width(p.width).Height(p.height).Render(contentStyle.Render(p.viewport.View()))
 	}
 
 	renderedContent := contentStyle.Render(p.viewport.View())
@@ -162,9 +117,8 @@ func (p *PaneModel) View() string {
 	fill := innerWidth - tlen
 	effectiveFill := max(fill-2*minSide, 0)
 
-	startInEffective := int(math.Round(float64(effectiveFill) * float64(p.titlePosition)))
-	leftNum := minSide + startInEffective
-	rightNum := minSide + (effectiveFill - startInEffective)
+	leftNum := minSide + effectiveFill/2
+	rightNum := minSide + (effectiveFill - effectiveFill/2)
 
 	leftFill := fillStyle.Render(strings.Repeat(borderDef.Top, leftNum))
 	rightFill := fillStyle.Render(strings.Repeat(borderDef.Top, rightNum))
@@ -183,31 +137,16 @@ func (p *PaneModel) View() string {
 
 	fullView := lipgloss.JoinVertical(lipgloss.Left, topLine, sidesContent)
 
-	return fullView
+	// Ensure the returned string *exactly* occupies the negotiated rectangle.
+	return lipgloss.NewStyle().
+		Width(p.width).
+		Height(p.height).
+		Render(fullView)
 }
 
-// DELETE these deprecated methods. They encourage an anti-pattern.
-/*
-func (p *PaneModel) SetContent(innerContent string) {
-	p.content = innerContent
-	p.viewport.SetContent(p.content)
-}
-
-func (p *PaneModel) SetFocus(focused bool) {
-	p.focused = focused
-}
-
-func (p *PaneModel) SetSize(width, height int) {
-	p.width = width
-	p.height = height
-}
-*/
-
-func (p *PaneModel) handleResize(width, height int) {
-	p.width = width
-	p.height = height
-
-	h, v := p.style.GetFrameSize()
+func (p *Pane) handleResize(width, height int) {
+	style := lipgloss.NewStyle().Border(lipgloss.RoundedBorder(), true)
+	h, v := style.GetFrameSize()
 	innerWidth := max(0, width-h)
 	innerHeight := max(0, height-v)
 
@@ -215,7 +154,7 @@ func (p *PaneModel) handleResize(width, height int) {
 	p.viewport.Height = innerHeight
 }
 
-func (p *PaneModel) handleScrolling(direction int) {
+func (p *Pane) handleScrolling(direction int) {
 	if direction > 0 {
 		p.viewport.LineUp(1)
 	} else {
@@ -223,24 +162,11 @@ func (p *PaneModel) handleScrolling(direction int) {
 	}
 }
 
-func (p *PaneModel) handleKeys(msg tea.KeyMsg) tea.Cmd {
+func (p *Pane) handleKeys(msg tea.KeyMsg) tea.Cmd {
 	if msg.Type == tea.KeyUp || msg.String() == "k" {
 		p.handleScrolling(1)
 	}
 	if msg.Type == tea.KeyDown || msg.String() == "j" {
-		p.handleScrolling(-1)
-	}
-	return nil
-}
-
-func (p *PaneModel) handleMouse(msg tea.MouseMsg) tea.Cmd {
-	if msg.Type == tea.MouseLeft {
-		return func() tea.Msg { return FocusPaneMsg(p.id) }
-	}
-	if msg.Type == tea.MouseWheelUp {
-		p.handleScrolling(1)
-	}
-	if msg.Type == tea.MouseWheelDown {
 		p.handleScrolling(-1)
 	}
 	return nil

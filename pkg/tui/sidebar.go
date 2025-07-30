@@ -5,28 +5,24 @@ import (
 )
 
 type SidebarModel struct {
-	pane *PaneModel
-
-	selected int
+	Pane
+	items []string
 }
 
 func NewSidebarModel() SidebarModel {
 	return SidebarModel{
-		pane: NewPane("sidebar", "Chats", "Navigation\n\n- Item 1\n- Item 2\n- Item 3"),
+		Pane:  NewPane("Chats", "Navigation\n\n- Item 1\n- Item 2\n- Item 3"),
+		items: []string{"Chat 1", "Chat 2", "Chat 3"},
 	}
 }
 
-func (m SidebarModel) Init() tea.Cmd { return nil }
-
 func (m SidebarModel) Update(msg tea.Msg) (SidebarModel, tea.Cmd) {
-	// Forward messages to the pane model
-	updatedPane, paneCmd := m.pane.Update(msg)
-	m.pane = updatedPane.(*PaneModel)
-	
-	return m, paneCmd
+	var cmd tea.Cmd
+	m.Pane, cmd = (&m.Pane).Update(msg)
+	return m, cmd
 }
 
 func (m SidebarModel) View() string {
-	return m.pane.View()
+	return m.Pane.View()
 }
 
