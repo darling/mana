@@ -2,6 +2,7 @@ package tui
 
 import (
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -23,7 +24,7 @@ func (m ContentModel) Update(msg tea.Msg) (ContentModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		if msg.String() == "enter" && m.focused {
-			m.history = append(m.history, "User input")
+			m.history = append(m.history, "User input "+time.Now().String())
 			content := strings.Join(m.history, "\n")
 			m.Pane.content = content
 			m.Pane.viewport.SetContent(content)

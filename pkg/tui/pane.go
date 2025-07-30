@@ -9,19 +9,19 @@ import (
 )
 
 type Pane struct {
-	focused bool
-	title   string
-	content string
-	width   int
-	height  int
+	focused  bool
+	title    string
+	content  string
+	width    int
+	height   int
 	viewport viewport.Model
 }
 
 // Messages for pane communication
 type (
 	SetContentMsg struct{ Content string }
-	FocusMsg     struct{ Focused bool }
-	SizeMsg      struct{ Width, Height int }
+	FocusMsg      struct{ Focused bool }
+	SizeMsg       struct{ Width, Height int }
 )
 
 func NewPane(title, content string) Pane {
@@ -67,7 +67,7 @@ func (p *Pane) View() string {
 	if p.focused {
 		borderColor = BorderFocused()
 	}
-	
+
 	style := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder(), true).
 		BorderForeground(borderColor)
@@ -156,9 +156,9 @@ func (p *Pane) handleResize(width, height int) {
 
 func (p *Pane) handleScrolling(direction int) {
 	if direction > 0 {
-		p.viewport.LineUp(1)
+		p.viewport.ScrollUp(1)
 	} else {
-		p.viewport.LineDown(1)
+		p.viewport.ScrollDown(1)
 	}
 }
 
