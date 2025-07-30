@@ -1,63 +1,62 @@
 package tui
 
 import (
-	"github.com/charmbracelet/lipgloss"
+	"image/color"
+
+	"github.com/charmbracelet/lipgloss/v2"
 )
 
-// BaseColors represents semantic colors for UI components
 type BaseColors struct {
-	Background lipgloss.AdaptiveColor
-	Foreground lipgloss.AdaptiveColor
+	Background color.Color
+	Foreground color.Color
 
-	Primary   lipgloss.AdaptiveColor
-	Secondary lipgloss.AdaptiveColor
-	Muted     lipgloss.AdaptiveColor
+	Primary   color.Color
+	Secondary color.Color
+	Muted     color.Color
 
-	Success lipgloss.AdaptiveColor
-	Warning lipgloss.AdaptiveColor
-	Danger  lipgloss.AdaptiveColor
+	Success color.Color
+	Warning color.Color
+	Danger  color.Color
 
-	BorderNormal  lipgloss.AdaptiveColor
-	BorderFocused lipgloss.AdaptiveColor
+	BorderNormal  color.Color
+	BorderFocused color.Color
 }
 
-// Theme holds all color definitions
 type Theme struct {
 	BaseColors
 
 	StatusBar struct {
-		Background lipgloss.AdaptiveColor
-		Foreground lipgloss.AdaptiveColor
+		Background color.Color
+		Foreground color.Color
 	}
 
 	Pane struct {
 		Border struct {
-			Normal  lipgloss.AdaptiveColor
-			Focused lipgloss.AdaptiveColor
+			Normal  color.Color
+			Focused color.Color
 		}
 		Content struct {
-			Active   lipgloss.AdaptiveColor
-			Inactive lipgloss.AdaptiveColor
+			Active   color.Color
+			Inactive color.Color
 		}
 	}
 }
 
-// DefaultTheme uses standard terminal color palette
 var DefaultTheme = Theme{
 	BaseColors: BaseColors{
-		Background: lipgloss.AdaptiveColor{Light: "", Dark: ""},
-		Foreground: lipgloss.AdaptiveColor{Light: "15", Dark: "7"},
+		Background: lipgloss.NoColor{},
+		Foreground: lipgloss.ANSIColor(7),
 
-		Primary:   lipgloss.AdaptiveColor{Light: "12", Dark: "12"}, // Blue
-		Secondary: lipgloss.AdaptiveColor{Light: "8", Dark: "8"},   // Gray
-		Muted:     lipgloss.AdaptiveColor{Light: "7", Dark: "242"}, // Light gray
+		Primary:   lipgloss.ANSIColor(12),
+		Secondary: lipgloss.ANSIColor(8),
+		Muted:     lipgloss.ANSIColor(7),
 
-		Success: lipgloss.AdaptiveColor{Light: "10", Dark: "10"}, // Green
-		Warning: lipgloss.AdaptiveColor{Light: "11", Dark: "11"}, // Yellow
-		Danger:  lipgloss.AdaptiveColor{Light: "9", Dark: "9"},   // Red
+		Success: lipgloss.ANSIColor(10),
+		Warning: lipgloss.ANSIColor(11),
+		Danger:  lipgloss.ANSIColor(9),
 
-		BorderNormal:  lipgloss.AdaptiveColor{Light: "8", Dark: "8"},
-		BorderFocused: lipgloss.AdaptiveColor{Light: "12", Dark: "12"},
+		BorderNormal:  lipgloss.ANSIColor(8),
+		BorderFocused: lipgloss.ANSIColor(12),
 	},
 }
 
@@ -78,15 +77,13 @@ func (t *Theme) deriveComponentColors() {
 	t.Pane.Content.Inactive = t.BaseColors.Muted
 }
 
-// Accessor functions for component-specific colors
-func StatusBarBg() lipgloss.AdaptiveColor       { return CurrentTheme.StatusBar.Background }
-func StatusBarFg() lipgloss.AdaptiveColor       { return CurrentTheme.StatusBar.Foreground }
-func BorderNormal() lipgloss.AdaptiveColor      { return CurrentTheme.Pane.Border.Normal }
-func BorderFocused() lipgloss.AdaptiveColor     { return CurrentTheme.Pane.Border.Focused }
-func ContentFgActive() lipgloss.AdaptiveColor   { return CurrentTheme.Pane.Content.Active }
-func ContentFgInactive() lipgloss.AdaptiveColor { return CurrentTheme.Pane.Content.Inactive }
+func StatusBarBg() color.Color       { return CurrentTheme.StatusBar.Background }
+func StatusBarFg() color.Color       { return CurrentTheme.StatusBar.Foreground }
+func BorderNormal() color.Color      { return CurrentTheme.Pane.Border.Normal }
+func BorderFocused() color.Color     { return CurrentTheme.Pane.Border.Focused }
+func ContentFgActive() color.Color   { return CurrentTheme.Pane.Content.Active }
+func ContentFgInactive() color.Color { return CurrentTheme.Pane.Content.Inactive }
 
-// SetTheme allows changing the active theme
 func SetTheme(theme Theme) {
 	CurrentTheme = theme
 	CurrentTheme.deriveComponentColors()

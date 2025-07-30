@@ -3,9 +3,9 @@ package tui
 import (
 	"strings"
 
-	"github.com/charmbracelet/bubbles/viewport"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/bubbles/v2/viewport"
+	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss/v2"
 )
 
 type Pane struct {
@@ -25,11 +25,11 @@ type (
 )
 
 func NewPane(title, content string) Pane {
-	vp := viewport.New(0, 0)
+	vp := viewport.New()
 	vp.SetContent(content)
 
-	vp.KeyMap.Up = keys.Up
-	vp.KeyMap.Down = keys.Down
+	vp.KeyMap.Up.SetKeys(keys.Up.Keys()...)
+	vp.KeyMap.Down.SetKeys(keys.Down.Keys()...)
 
 	vp.Style = lipgloss.NewStyle()
 
@@ -151,6 +151,6 @@ func (p *Pane) handleResize(width, height int) {
 	innerWidth := max(0, width-h)
 	innerHeight := max(0, height-v)
 
-	p.viewport.Width = innerWidth
-	p.viewport.Height = innerHeight
+	p.viewport.SetWidth(innerWidth)
+	p.viewport.SetHeight(innerHeight)
 }
