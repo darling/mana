@@ -7,7 +7,12 @@ import (
 )
 
 func Run() error {
-	p := tea.NewProgram(NewRootModel(), tea.WithAltScreen())
+	p := tea.NewProgram(
+		NewRootModel(),
+		tea.WithAltScreen(),
+		tea.WithMouseCellMotion(),
+		tea.WithInputTTY(),
+	)
 	if _, err := p.Run(); err != nil {
 		log.Fatal(err)
 	}

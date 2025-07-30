@@ -28,6 +28,8 @@ func (m ContentModel) Update(msg tea.Msg) (ContentModel, tea.Cmd) {
 			content := strings.Join(m.history, "\n")
 			m.Pane.content = content
 			m.Pane.viewport.SetContent(content)
+			// Scroll to bottom after adding new content
+			m.Pane.viewport.GotoBottom()
 		}
 	}
 	var cmd tea.Cmd

@@ -70,7 +70,7 @@ func init() {
 
 func (t *Theme) deriveComponentColors() {
 	t.StatusBar.Background = t.BaseColors.Background
-	t.StatusBar.Foreground = t.BaseColors.Foreground
+	t.StatusBar.Foreground = t.BaseColors.Muted
 
 	t.Pane.Border.Normal = t.BaseColors.BorderNormal
 	t.Pane.Border.Focused = t.BaseColors.BorderFocused

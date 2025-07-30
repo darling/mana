@@ -25,15 +25,19 @@ type (
 )
 
 func NewPane(title, content string) Pane {
-	pane := Pane{
-		focused:  false,
+	vp := viewport.New(0, 0)
+	vp.SetContent(content)
+
+	vp.KeyMap.Up = keys.Up
+	vp.KeyMap.Down = keys.Down
+
+	vp.Style = lipgloss.NewStyle()
+
+	return Pane{
 		title:    title,
 		content:  content,
-		viewport: viewport.New(0, 0),
+		viewport: vp,
 	}
-
-	pane.viewport.SetContent(pane.content)
-	return pane
 }
 
 func (p *Pane) Update(msg tea.Msg) (Pane, tea.Cmd) {
@@ -51,13 +55,10 @@ func (p *Pane) Update(msg tea.Msg) (Pane, tea.Cmd) {
 		p.height = msg.Height
 		p.handleResize(msg.Width, msg.Height)
 
-	case tea.KeyMsg:
+	case tea.KeyMsg, tea.MouseMsg:
 		if p.focused {
-			cmd = p.handleKeys(msg)
+			p.viewport, cmd = p.viewport.Update(msg)
 		}
-
-	case tea.MouseMsg:
-		p.viewport, cmd = p.viewport.Update(msg)
 	}
 	return *p, cmd
 }
@@ -117,8 +118,8 @@ func (p *Pane) View() string {
 	fill := innerWidth - tlen
 	effectiveFill := max(fill-2*minSide, 0)
 
-	leftNum := minSide + effectiveFill/2
-	rightNum := minSide + (effectiveFill - effectiveFill/2)
+	leftNum := minSide
+	rightNum := minSide + effectiveFill
 
 	leftFill := fillStyle.Render(strings.Repeat(borderDef.Top, leftNum))
 	rightFill := fillStyle.Render(strings.Repeat(borderDef.Top, rightNum))
@@ -152,22 +153,4 @@ func (p *Pane) handleResize(width, height int) {
 
 	p.viewport.Width = innerWidth
 	p.viewport.Height = innerHeight
-}
-
-func (p *Pane) handleScrolling(direction int) {
-	if direction > 0 {
-		p.viewport.ScrollUp(1)
-	} else {
-		p.viewport.ScrollDown(1)
-	}
-}
-
-func (p *Pane) handleKeys(msg tea.KeyMsg) tea.Cmd {
-	if msg.Type == tea.KeyUp || msg.String() == "k" {
-		p.handleScrolling(1)
-	}
-	if msg.Type == tea.KeyDown || msg.String() == "j" {
-		p.handleScrolling(-1)
-	}
-	return nil
 }
