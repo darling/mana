@@ -48,8 +48,8 @@ var DefaultTheme = Theme{
 		Foreground: lipgloss.ANSIColor(7),
 
 		Primary:   lipgloss.ANSIColor(12),
-		Secondary: lipgloss.ANSIColor(8),
-		Muted:     lipgloss.ANSIColor(7),
+		Secondary: lipgloss.ANSIColor(13),
+		Muted:     lipgloss.ANSIColor(8),
 
 		Success: lipgloss.ANSIColor(10),
 		Warning: lipgloss.ANSIColor(11),
