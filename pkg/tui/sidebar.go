@@ -5,13 +5,14 @@ import (
 )
 
 type SidebarModel struct {
-	pane     *Pane
+	pane *Pane
+
 	selected int
 }
 
 func NewSidebarModel() SidebarModel {
 	return SidebarModel{
-		pane: NewPane("Navigation\n\n- Item 1\n- Item 2\n- Item 3"),
+		pane: NewPane("Chats", "Navigation\n\n- Item 1\n- Item 2\n- Item 3"),
 	}
 }
 

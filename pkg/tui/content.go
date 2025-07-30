@@ -11,7 +11,7 @@ type ContentModel struct {
 func NewContentModel() ContentModel {
 	initialContent := "Welcome to main content!\n\nThis area will display dynamic content."
 	return ContentModel{
-		pane: NewPane(initialContent),
+		pane: NewPane("Chat", initialContent),
 	}
 }
 
