@@ -52,8 +52,9 @@ func NewRootModel() RootModel {
 	content := NewContentModel()
 	statusbar := NewStatusbarModel()
 
-	// Start with content focused
-	content.SetFocus(true)
+	// Start with content focused.
+	// Since this is initialization, we can set state directly.
+	content.pane.focused = true
 
 	return RootModel{
 		sidebar:   sidebar,
@@ -79,8 +80,23 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case key.Matches(msg, m.keys.Tab):
 			m.focusIdx = (m.focusIdx + 1) % 2
-			m.sidebar.SetFocus(m.focusIdx == 0)
-			m.content.SetFocus(m.focusIdx == 1)
+			var targetID string
+			if m.focusIdx == 0 {
+				targetID = "sidebar"
+			} else {
+				targetID = "content"
+			}
+			// Send a targeted message to focus the correct pane.
+			return m, func() tea.Msg { return FocusPaneMsg(targetID) }
+		}
+
+	// This case allows the RootModel to track which pane is focused,
+	// even when focus is changed by a mouse click.
+	case FocusPaneMsg:
+		if string(msg) == "sidebar" {
+			m.focusIdx = 0
+		} else {
+			m.focusIdx = 1
 		}
 
 	case tea.WindowSizeMsg:
@@ -93,12 +109,20 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		sidebarWidth := int(float64(m.width) * 0.3)
 		contentWidth := m.width - sidebarWidth
 
-		m.sidebar.SetSize(sidebarWidth, mainViewHeight)
-		m.content.SetSize(contentWidth, mainViewHeight)
+		// Update statusbar directly
 		m.statusbar.SetSize(m.width)
+
+		// Send specific size messages to the child panes.
+		m.sidebar, cmd = m.sidebar.Update(PaneSizeMsg{Width: sidebarWidth, Height: mainViewHeight})
+		cmds = append(cmds, cmd)
+
+		m.content, cmd = m.content.Update(PaneSizeMsg{Width: contentWidth, Height: mainViewHeight})
+		cmds = append(cmds, cmd)
+
+		return m, tea.Batch(cmds...)
 	}
 
-	// Update child models
+	// For all other messages, propagate them to children.
 	m.sidebar, cmd = m.sidebar.Update(msg)
 	cmds = append(cmds, cmd)
 
@@ -112,16 +136,9 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m RootModel) View() string {
-	// Get views from child models (they handle their own styling now)
 	sidebarView := m.sidebar.View()
 	contentView := m.content.View()
-
-	// Simple horizontal layout - no styling, just positioning
 	mainView := lipgloss.JoinHorizontal(lipgloss.Top, sidebarView, contentView)
-
-	// Get statusbar view
 	statusbarView := m.statusbar.View()
-
-	// Join main view and statusbar vertically
 	return lipgloss.JoinVertical(lipgloss.Left, mainView, statusbarView)
 }

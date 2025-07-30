@@ -5,31 +5,28 @@ import (
 )
 
 type SidebarModel struct {
-	pane *Pane
+	pane *PaneModel
 
 	selected int
 }
 
 func NewSidebarModel() SidebarModel {
 	return SidebarModel{
-		pane: NewPane("Chats", "Navigation\n\n- Item 1\n- Item 2\n- Item 3"),
+		pane: NewPane("sidebar", "Chats", "Navigation\n\n- Item 1\n- Item 2\n- Item 3"),
 	}
 }
 
 func (m SidebarModel) Init() tea.Cmd { return nil }
 
 func (m SidebarModel) Update(msg tea.Msg) (SidebarModel, tea.Cmd) {
-	return m, nil
+	// Forward messages to the pane model
+	updatedPane, paneCmd := m.pane.Update(msg)
+	m.pane = updatedPane.(*PaneModel)
+	
+	return m, paneCmd
 }
 
 func (m SidebarModel) View() string {
-	return m.pane.Render()
+	return m.pane.View()
 }
 
-func (m *SidebarModel) SetFocus(focused bool) {
-	m.pane.SetFocus(focused)
-}
-
-func (m *SidebarModel) SetSize(width, height int) {
-	m.pane.SetSize(width, height)
-}
