@@ -2,6 +2,7 @@ package tui
 
 import (
 	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss/v2"
 )
 
 // Dialog messages
@@ -83,5 +84,52 @@ func (m DialogModel) View() string {
 
 func (m *DialogModel) SetSize(width, height int) {
 	m.width, m.height = width, height
+}
+
+// RenderWithBase creates a modal dialog overlay using lipgloss layers
+func (m DialogModel) RenderWithBase(baseView string) string {
+	if !m.HasDialogs() {
+		return baseView
+	}
+
+	// Create base layer
+	baseLayer := lipgloss.NewLayer(baseView)
+
+	// Create dialog layers with increasing Z indices
+	var layers []*lipgloss.Layer
+	layers = append(layers, baseLayer)
+
+	for i, dialog := range m.dialogs {
+		if v, ok := dialog.(interface{ View() string }); ok {
+			dialogView := v.View()
+			
+			// Center the dialog
+			x := (m.width - lipgloss.Width(dialogView)) / 2
+			y := (m.height - lipgloss.Height(dialogView)) / 2
+			
+			// Create semi-transparent overlay for the topmost dialog
+			if i == len(m.dialogs)-1 {
+				overlay := m.createOverlay()
+				overlayLayer := lipgloss.NewLayer(overlay).Z(i + 1)
+				layers = append(layers, overlayLayer)
+			}
+			
+			// Add dialog layer with higher Z index
+			dialogLayer := lipgloss.NewLayer(dialogView).
+				X(x).
+				Y(y).
+				Z(i + 2) // Ensure dialog is above overlay
+			layers = append(layers, dialogLayer)
+		}
+	}
+
+	// Create canvas with all layers
+	canvas := lipgloss.NewCanvas(layers...)
+	return canvas.Render()
+}
+
+// Create a semi-transparent overlay
+func (m DialogModel) createOverlay() string {
+	return ""
 }
 

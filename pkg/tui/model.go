@@ -43,14 +43,16 @@ var keys = keyMap{
 }
 
 type RootModel struct {
-	width     int
-	height    int
-	sidebar   SidebarModel
-	content   ContentModel
-	statusbar StatusbarModel
-	dialogs   DialogModel
-	focusIdx  int
-	keys      keyMap
+	width        int
+	height       int
+	sidebar      SidebarModel
+	content      ContentModel
+	statusbar    StatusbarModel
+	dialogs      DialogModel
+	focusIdx     int
+	lastFocusIdx int
+	unfocused    bool
+	keys         keyMap
 }
 
 func NewRootModel() RootModel {
@@ -62,17 +64,41 @@ func NewRootModel() RootModel {
 	content.focused = true
 
 	return RootModel{
-		sidebar:   sidebar,
-		content:   content,
-		statusbar: statusbar,
-		dialogs:   NewDialogModel(),
-		focusIdx:  1,
-		keys:      keys,
+		sidebar:      sidebar,
+		content:      content,
+		statusbar:    statusbar,
+		dialogs:      NewDialogModel(),
+		focusIdx:     1,
+		lastFocusIdx: 1,
+		unfocused:    false,
+		keys:         keys,
 	}
 }
 
 func (m RootModel) Init() tea.Cmd {
 	return nil
+}
+
+func (m *RootModel) hasModels() bool {
+	return len(m.sidebar.items) > 0
+}
+
+func (m *RootModel) updateFocusState() {
+	hasModels := m.hasModels()
+	hasDialogs := m.dialogs.HasDialogs()
+	shouldUnfocus := !hasModels || hasDialogs
+	
+	if shouldUnfocus && !m.unfocused {
+		m.lastFocusIdx = m.focusIdx
+		m.unfocused = true
+		m.sidebar.focused = false
+		m.content.focused = false
+	} else if !shouldUnfocus && m.unfocused {
+		m.unfocused = false
+		m.focusIdx = m.lastFocusIdx
+		m.sidebar.focused = m.focusIdx == 0
+		m.content.focused = m.focusIdx == 1
+	}
 }
 
 func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -82,18 +108,22 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case OpenDialogMsg:
 		_, cmd := m.dialogs.Update(msg)
 		cmds = append(cmds, cmd)
+		m.updateFocusState()
 		return m, tea.Batch(cmds...)
 	}
 
 	if m.dialogs.HasDialogs() {
 		_, cmd := m.dialogs.Update(msg)
+		m.updateFocusState()
 		return m, cmd
 	}
+
+	m.updateFocusState()
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, m.keys.Tab):
+		case key.Matches(msg, m.keys.Tab) && !m.unfocused:
 
 			m.focusIdx = (m.focusIdx + 1) % 2
 
@@ -146,12 +176,14 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	var sbCmd, ctCmd, stCmd tea.Cmd
 
-	if m.focusIdx == 0 {
-		m.sidebar, sbCmd = m.sidebar.Update(msg)
-		cmds = append(cmds, sbCmd)
-	} else {
-		m.content, ctCmd = m.content.Update(msg)
-		cmds = append(cmds, ctCmd)
+	if !m.unfocused {
+		if m.focusIdx == 0 {
+			m.sidebar, sbCmd = m.sidebar.Update(msg)
+			cmds = append(cmds, sbCmd)
+		} else {
+			m.content, ctCmd = m.content.Update(msg)
+			cmds = append(cmds, ctCmd)
+		}
 	}
 
 	m.statusbar, stCmd = m.statusbar.Update(msg)
@@ -165,19 +197,9 @@ func (m RootModel) View() string {
 	contentView := m.content.View()
 
 	mainView := lipgloss.JoinHorizontal(lipgloss.Top, sidebarView, contentView)
-
 	statusbarView := m.statusbar.View()
-
 	baseView := lipgloss.JoinVertical(lipgloss.Left, mainView, statusbarView)
 
-	// Layer dialogs if any exist
-	if m.dialogs.HasDialogs() {
-		dialogView := m.dialogs.View()
-		return lipgloss.Place(
-			m.width, m.height,
-			lipgloss.Center, lipgloss.Center,
-			dialogView,
-		)
-	}
-	return baseView
+	// Use the new layer-based rendering
+	return m.dialogs.RenderWithBase(baseView)
 }

@@ -18,7 +18,7 @@ func NewConfigDialog() ConfigDialog {
 	ti := textinput.New()
 	ti.Placeholder = "Enter API key"
 	ti.CharLimit = 64
-	ti.SetWidth(40)
+	ti.SetWidth(50)
 	ti.Focus()
 
 	return ConfigDialog{
@@ -55,11 +55,12 @@ func (m ConfigDialog) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m ConfigDialog) View() string {
+	// Create the main dialog content
 	containerStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder(), true).
 		BorderForeground(BorderFocused()).
-		Padding(1, 2).
-		Width(60)
+		Padding(2, 4).
+		Width(70)
 
 	title := lipgloss.NewStyle().
 		Bold(true).
@@ -104,3 +105,4 @@ func min(a, b int) int {
 	}
 	return b
 }
+
