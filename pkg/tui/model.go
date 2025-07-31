@@ -87,7 +87,7 @@ func (m *RootModel) updateFocusState() {
 	hasModels := m.hasModels()
 	hasDialogs := m.dialogs.HasDialogs()
 	shouldUnfocus := !hasModels || hasDialogs
-	
+
 	if shouldUnfocus && !m.unfocused {
 		m.lastFocusIdx = m.focusIdx
 		m.unfocused = true
