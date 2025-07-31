@@ -83,7 +83,14 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		_, cmd := m.dialogs.Update(msg)
 		cmds = append(cmds, cmd)
 		return m, tea.Batch(cmds...)
+	}
 
+	if m.dialogs.HasDialogs() {
+		_, cmd := m.dialogs.Update(msg)
+		return m, cmd
+	}
+
+	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, m.keys.Tab):
@@ -126,7 +133,6 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.content.Pane.handleResize(contentWidth, mainViewHeight)
 
 		if m.dialogs.HasDialogs() {
-			// Forward resize to top dialog
 			if top := m.dialogs.dialogs[len(m.dialogs.dialogs)-1]; top != nil {
 				var cmd tea.Cmd
 				top, cmd = top.Update(msg)
@@ -135,13 +141,6 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		return m, tea.Batch(cmds...)
-	}
-
-	// Dialog focus precedence
-	if m.dialogs.HasDialogs() {
-		_, cmd := m.dialogs.Update(msg)
-		cmds = append(cmds, cmd)
 		return m, tea.Batch(cmds...)
 	}
 

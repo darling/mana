@@ -1,16 +1,17 @@
 package tui
 
 import (
+	"github.com/charmbracelet/bubbles/v2/key"
 	"github.com/charmbracelet/bubbles/v2/textinput"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
 )
 
 type ConfigDialog struct {
-	focused   bool
 	apiKey    textinput.Model
 	selection int
 	choices   []string
+	keys      keyMap
 }
 
 func NewConfigDialog() ConfigDialog {
@@ -18,11 +19,13 @@ func NewConfigDialog() ConfigDialog {
 	ti.Placeholder = "Enter API key"
 	ti.CharLimit = 64
 	ti.SetWidth(40)
+	ti.Focus()
 
 	return ConfigDialog{
 		apiKey:    ti,
 		selection: 0,
 		choices:   []string{"Save & Close", "Cancel"},
+		keys:      keys,
 	}
 }
 
@@ -32,27 +35,22 @@ func (m ConfigDialog) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	switch msg := msg.(type) {
-	case FocusDialogMsg:
-		m.focused = msg.Focused
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "enter":
-			if m.selection == 0 { // Save
-				// Save logic here
+		switch {
+		case key.Matches(msg, m.keys.Enter):
+			if m.selection == 0 {
 				return m, func() tea.Msg { return CloseDialogMsg{} }
-			} else { // Cancel
+			} else {
 				return m, func() tea.Msg { return CloseDialogMsg{} }
 			}
-		case "up":
+		case key.Matches(msg, m.keys.Up):
 			m.selection = max(0, m.selection-1)
-		case "down":
+		case key.Matches(msg, m.keys.Down):
 			m.selection = min(len(m.choices)-1, m.selection+1)
 		}
 	}
 
-	if m.focused {
-		m.apiKey, cmd = m.apiKey.Update(msg)
-	}
+	m.apiKey, cmd = m.apiKey.Update(msg)
 	return m, cmd
 }
 

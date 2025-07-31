@@ -26,7 +26,8 @@ func (m DialogModel) HasDialogs() bool { return len(m.dialogs) > 0 }
 
 func (m *DialogModel) OpenDialog(model tea.Model) tea.Cmd {
 	m.dialogs = append(m.dialogs, model)
-	return nil
+	ws := tea.WindowSizeMsg{Width: m.width, Height: m.height}
+	return func() tea.Msg { return ws }
 }
 
 func (m *DialogModel) CloseDialog() tea.Cmd {
@@ -43,6 +44,9 @@ func (m *DialogModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case OpenDialogMsg:
+		if m.HasDialogs() {
+			return m, nil
+		}
 		return m, m.OpenDialog(msg.Model)
 	case CloseDialogMsg, tea.KeyMsg: // Handle ESC
 		if key, ok := msg.(tea.KeyMsg); ok && key.String() != "esc" {
