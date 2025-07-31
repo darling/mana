@@ -68,13 +68,13 @@ func init() {
 }
 
 func (t *Theme) deriveComponentColors() {
-	t.StatusBar.Background = t.BaseColors.Background
-	t.StatusBar.Foreground = t.BaseColors.Muted
+	t.StatusBar.Background = t.Background
+	t.StatusBar.Foreground = t.Muted
 
-	t.Pane.Border.Normal = t.BaseColors.BorderNormal
-	t.Pane.Border.Focused = t.BaseColors.BorderFocused
-	t.Pane.Content.Active = t.BaseColors.Foreground
-	t.Pane.Content.Inactive = t.BaseColors.Muted
+	t.Pane.Border.Normal = t.BorderNormal
+	t.Pane.Border.Focused = t.BorderFocused
+	t.Pane.Content.Active = t.Foreground
+	t.Pane.Content.Inactive = t.Muted
 }
 
 func StatusBarBg() color.Color       { return CurrentTheme.StatusBar.Background }

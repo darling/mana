@@ -58,8 +58,8 @@ func NewRootModel() RootModel {
 	content := NewContentModel()
 	statusbar := NewStatusbarModel()
 
-	sidebar.Pane.focused = false
-	content.Pane.focused = true
+	sidebar.focused = false
+	content.focused = true
 
 	return RootModel{
 		sidebar:   sidebar,
@@ -97,8 +97,8 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			m.focusIdx = (m.focusIdx + 1) % 2
 
-			m.sidebar.Pane.focused = m.focusIdx == 0
-			m.content.Pane.focused = m.focusIdx == 1
+			m.sidebar.focused = m.focusIdx == 0
+			m.content.focused = m.focusIdx == 1
 
 			return m, nil
 		case key.Matches(msg, m.keys.Settings):
@@ -124,13 +124,13 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.statusbar.SetSize(m.width)
 
-		m.sidebar.Pane.width = sidebarWidth
-		m.sidebar.Pane.height = mainViewHeight
-		m.sidebar.Pane.handleResize(sidebarWidth, mainViewHeight)
+		m.sidebar.width = sidebarWidth
+		m.sidebar.height = mainViewHeight
+		m.sidebar.handleResize(sidebarWidth, mainViewHeight)
 
-		m.content.Pane.width = contentWidth
-		m.content.Pane.height = mainViewHeight
-		m.content.Pane.handleResize(contentWidth, mainViewHeight)
+		m.content.width = contentWidth
+		m.content.height = mainViewHeight
+		m.content.handleResize(contentWidth, mainViewHeight)
 
 		if m.dialogs.HasDialogs() {
 			if top := m.dialogs.dialogs[len(m.dialogs.dialogs)-1]; top != nil {

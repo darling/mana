@@ -26,9 +26,9 @@ func (m ContentModel) Update(msg tea.Msg) (ContentModel, tea.Cmd) {
 		if msg.String() == "enter" && m.focused {
 			m.history = append(m.history, "User input "+time.Now().String())
 			content := strings.Join(m.history, "\n")
-			m.Pane.content = content
-			m.Pane.viewport.SetContent(content)
-			m.Pane.viewport.GotoBottom()
+			m.content = content
+			m.viewport.SetContent(content)
+			m.viewport.GotoBottom()
 		}
 	}
 	var cmd tea.Cmd
