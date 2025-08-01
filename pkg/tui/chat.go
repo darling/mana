@@ -20,16 +20,20 @@ func renderHistory(msgs []llm.Message) string {
 	for _, m := range msgs {
 		switch m.Role {
 		case "user":
+			content, err := glamour.Render(m.Content, "dark")
+			if err != nil {
+				content = m.Content
+			}
 			b.WriteString(lipgloss.NewStyle().Bold(true).
-				Render("you:\n") + m.Content + "\n\n")
+				Render("you:\n") + content)
 		default:
 			content, err := glamour.Render(m.Content, "dark")
 			if err != nil {
-				content = m.Content // Fallback to raw content if rendering fails
+				content = m.Content
 			}
 			b.WriteString(lipgloss.NewStyle().
 				Foreground(lipgloss.Color("#6cf")).
-				Render("ai:\n") + content + "\n\n")
+				Render("ai:\n") + content)
 		}
 	}
 	return b.String()

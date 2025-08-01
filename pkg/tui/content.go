@@ -44,6 +44,7 @@ type ContentModel struct {
 	llmManager *llm.Manager
 	convo      *Conversation
 	loading    bool
+	content    string
 }
 
 func NewContentModel(llmManager *llm.Manager) Content {
@@ -101,17 +102,18 @@ func (m *ContentModel) Update(msg tea.Msg) (Content, tea.Cmd) {
 			}
 			m.convo.Messages = append(m.convo.Messages, user)
 			m.SetLoading(true)
-			m.viewport.GotoBottom()
+			m.syncViewportContent()
 			cmds = append(cmds, generateCmd(m.llmManager, m.convo.Messages))
 		}
 
 	case LLMResponseMsg:
 		m.convo.Messages = append(m.convo.Messages, msg.Response)
 		m.SetLoading(false)
-		m.viewport.GotoBottom()
+		m.syncViewportContent()
 
 	case LLMErrorMsg:
 		m.SetLoading(false)
+		m.syncViewportContent()
 		// cmds = append(cmds, func() tea.Msg {
 		// 	return StatusErrorMsg(msg.Err)
 		// })
@@ -136,13 +138,20 @@ func (m *ContentModel) Update(msg tea.Msg) (Content, tea.Cmd) {
 }
 
 func (m ContentModel) View() string {
+	return m.Pane.View()
+}
+
+func (m *ContentModel) syncViewportContent() {
+	content := ""
 	if m.convo != nil && len(m.convo.Messages) > 0 {
-		content := renderHistory(m.convo.Messages)
-		if m.loading {
-			content += "\n• AI is thinking..."
-		}
+		content = renderHistory(m.convo.Messages)
+	}
+	if m.loading {
+		content += "\n• AI is thinking..."
+	}
+	if content != m.content {
 		m.content = content
 		m.viewport.SetContent(content)
+		m.viewport.GotoBottom()
 	}
-	return m.Pane.View()
 }
