@@ -4,6 +4,8 @@ import (
 	"github.com/charmbracelet/bubbles/v2/key"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
+
+	"github.com/darling/mana/pkg/llm"
 )
 
 type keyMap struct {
@@ -13,6 +15,7 @@ type keyMap struct {
 	Quit     key.Binding
 	Enter    key.Binding
 	Settings key.Binding
+	Prompt   key.Binding
 }
 
 var keys = keyMap{
@@ -40,13 +43,17 @@ var keys = keyMap{
 		key.WithKeys("s"),
 		key.WithHelp("s", "settings"),
 	),
+	Prompt: key.NewBinding(
+		key.WithKeys("c"),
+		key.WithHelp("c", "compose"),
+	),
 }
 
 type RootModel struct {
 	width        int
 	height       int
 	sidebar      SidebarModel
-	content      ContentModel
+	content      Content
 	statusbar    StatusbarModel
 	dialogs      DialogModel
 	focusIdx     int
@@ -55,13 +62,13 @@ type RootModel struct {
 	keys         keyMap
 }
 
-func NewRootModel() RootModel {
+func NewRootModel(llmManager *llm.Manager) RootModel {
 	sidebar := NewSidebarModel()
-	content := NewContentModel()
+	content := NewContentModel(llmManager)
 	statusbar := NewStatusbarModel()
 
-	sidebar.focused = false
-	content.focused = true
+	sidebar.SetFocused(false)
+	content.SetFocused(true)
 
 	return RootModel{
 		sidebar:      sidebar,
@@ -91,13 +98,13 @@ func (m *RootModel) updateFocusState() {
 	if shouldUnfocus && !m.unfocused {
 		m.lastFocusIdx = m.focusIdx
 		m.unfocused = true
-		m.sidebar.focused = false
-		m.content.focused = false
+		m.sidebar.SetFocused(false)
+		m.content.SetFocused(false)
 	} else if !shouldUnfocus && m.unfocused {
 		m.unfocused = false
 		m.focusIdx = m.lastFocusIdx
-		m.sidebar.focused = m.focusIdx == 0
-		m.content.focused = m.focusIdx == 1
+		m.sidebar.SetFocused(m.focusIdx == 0)
+		m.content.SetFocused(m.focusIdx == 1)
 	}
 }
 
@@ -127,8 +134,8 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			m.focusIdx = (m.focusIdx + 1) % 2
 
-			m.sidebar.focused = m.focusIdx == 0
-			m.content.focused = m.focusIdx == 1
+			m.sidebar.SetFocused(m.focusIdx == 0)
+			m.content.SetFocused(m.focusIdx == 1)
 
 			return m, nil
 		case key.Matches(msg, m.keys.Settings):
@@ -158,9 +165,7 @@ func (m RootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.sidebar.height = mainViewHeight
 		m.sidebar.handleResize(sidebarWidth, mainViewHeight)
 
-		m.content.width = contentWidth
-		m.content.height = mainViewHeight
-		m.content.handleResize(contentWidth, mainViewHeight)
+		m.content.SetSize(contentWidth, mainViewHeight)
 
 		if m.dialogs.HasDialogs() {
 			if top := m.dialogs.dialogs[len(m.dialogs.dialogs)-1]; top != nil {
@@ -200,6 +205,5 @@ func (m RootModel) View() string {
 	statusbarView := m.statusbar.View()
 	baseView := lipgloss.JoinVertical(lipgloss.Left, mainView, statusbarView)
 
-	// Use the new layer-based rendering
 	return m.dialogs.RenderWithBase(baseView)
 }

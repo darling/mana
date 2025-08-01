@@ -16,6 +16,11 @@ func NewSidebarModel() SidebarModel {
 	}
 }
 
+// SetFocused sets the focus state of the sidebar model
+func (m *SidebarModel) SetFocused(focused bool) {
+	m.focused = focused
+}
+
 func (m SidebarModel) Update(msg tea.Msg) (SidebarModel, tea.Cmd) {
 	var cmd tea.Cmd
 	m.Pane, cmd = (&m.Pane).Update(msg)

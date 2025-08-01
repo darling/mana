@@ -8,6 +8,7 @@ import (
 	"github.com/darling/mana/cmd"
 	"github.com/darling/mana/pkg/llm"
 	_ "github.com/darling/mana/pkg/llm/providers/openrouter"
+	"github.com/darling/mana/pkg/tui"
 	"github.com/darling/mana/pkg/version"
 )
 
@@ -18,9 +19,11 @@ func New(buildInfo version.BuildInfo) *cli.Command {
 	)
 
 	return &cli.Command{
-		Name:   "mana",
-		Usage:  "The cutest LLM interface for your terminal",
-		Action: cmd.DefaultAction,
+		Name:  "mana",
+		Usage: "The cutest LLM interface for your terminal",
+		Action: func(ctx context.Context, c *cli.Command) error {
+			return tui.Run(llmManager)
+		},
 		Flags: []cli.Flag{
 			&cli.BoolFlag{
 				Name:    "version",
