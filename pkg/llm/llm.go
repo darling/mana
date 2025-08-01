@@ -3,6 +3,7 @@ package llm
 import (
 	"context"
 	"fmt"
+	"sync"
 )
 
 type Message struct {
@@ -33,17 +34,21 @@ type Manager struct {
 	provider Provider
 }
 
-func NewManager(providerType string, config Config) (*Manager, error) {
-	var provider Provider
-	var err error
+var (
+	registry   = make(map[string]func(Config) (Provider, error))
+	registryMu sync.RWMutex
+)
 
-	switch providerType {
-	case "openrouter":
-		provider, err = newOpenRouterProvider(config)
-	default:
+func NewManager(providerType string, config Config) (*Manager, error) {
+	registryMu.RLock()
+	factory, exists := registry[providerType]
+	registryMu.RUnlock()
+
+	if !exists {
 		return nil, fmt.Errorf("unsupported provider: %s", providerType)
 	}
 
+	provider, err := factory(config)
 	if err != nil {
 		return nil, err
 	}
@@ -63,8 +68,11 @@ func (m *Manager) Close() error {
 	return m.provider.Close()
 }
 
-var newOpenRouterProvider func(Config) (Provider, error)
-
-func RegisterOpenRouterProvider(factory func(Config) (Provider, error)) {
-	newOpenRouterProvider = factory
+func Register(name string, factory func(Config) (Provider, error)) {
+	registryMu.Lock()
+	defer registryMu.Unlock()
+	if _, exists := registry[name]; exists {
+		panic(fmt.Sprintf("provider %q already registered", name))
+	}
+	registry[name] = factory
 }

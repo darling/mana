@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	llm.RegisterOpenRouterProvider(New)
+	llm.Register("openrouter", New)
 }
 
 type Provider struct {
