@@ -36,3 +36,4 @@ bin/
 ehthumbs.db
 Thumbs.db
 mana
+.env

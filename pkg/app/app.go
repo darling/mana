@@ -6,10 +6,17 @@ import (
 	"github.com/urfave/cli/v3"
 
 	"github.com/darling/mana/cmd"
+	"github.com/darling/mana/pkg/llm"
+	_ "github.com/darling/mana/pkg/llm/providers/openrouter"
 	"github.com/darling/mana/pkg/version"
 )
 
 func New(buildInfo version.BuildInfo) *cli.Command {
+	var (
+		openRouterAPIKey string
+		llmManager       *llm.Manager
+	)
+
 	return &cli.Command{
 		Name:   "mana",
 		Usage:  "The cutest LLM interface for your terminal",
@@ -20,6 +27,14 @@ func New(buildInfo version.BuildInfo) *cli.Command {
 				Aliases: []string{"v"},
 				Usage:   "Show the current version",
 			},
+			&cli.StringFlag{
+				Name:        "openrouter-api-key",
+				Usage:       "OpenRouter API key",
+				Destination: &openRouterAPIKey,
+				Sources: cli.NewValueSourceChain(
+					cli.EnvVar("OPENROUTER_API_KEY"),
+				),
+			},
 		},
 		Before: func(ctx context.Context, c *cli.Command) (context.Context, error) {
 			if c.Bool("version") {
@@ -28,7 +43,26 @@ func New(buildInfo version.BuildInfo) *cli.Command {
 				}
 				return ctx, cli.Exit("", 0)
 			}
+
+			// Initialize LLM manager if API key is provided
+			if openRouterAPIKey != "" {
+				manager, err := llm.NewManager("openrouter", llm.Config{
+					APIKey: openRouterAPIKey,
+					Model:  "anthropic/claude-3-haiku",
+				})
+				if err != nil {
+					return ctx, err
+				}
+				llmManager = manager
+			}
+
 			return ctx, nil
+		},
+		After: func(ctx context.Context, c *cli.Command) error {
+			if llmManager != nil {
+				return llmManager.Close()
+			}
+			return nil
 		},
 		Commands: []*cli.Command{
 			{
