@@ -51,7 +51,7 @@ func New(buildInfo version.BuildInfo) *cli.Command {
 			if openRouterAPIKey != "" {
 				manager, err := llm.NewManager("openrouter", llm.Config{
 					APIKey: openRouterAPIKey,
-					Model:  "anthropic/claude-3-haiku",
+					Model:  "qwen/qwen3-coder:turbo",
 				})
 				if err != nil {
 					return ctx, err
