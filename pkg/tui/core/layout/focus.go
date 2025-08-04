@@ -124,9 +124,21 @@ func (fm FocusManager) Get(index int) (Focusable, error) {
 	return fm.components[index].Clone(), nil
 }
 
+func (fm FocusManager) GetAll() []Focusable {
+	return cloneComponents(fm.components)
+}
+
 func (fm FocusManager) GetFocused() (Focusable, error) {
 	if fm.focusedIndex < 0 || fm.focusedIndex >= len(fm.components) {
 		return nil, errors.New("no component is focused")
 	}
 	return fm.components[fm.focusedIndex].Clone(), nil
+}
+
+func (fm FocusManager) Clone() FocusManager {
+	return FocusManager{
+		components:   cloneComponents(fm.components),
+		focusedIndex: fm.focusedIndex,
+		wrap:         fm.wrap,
+	}
 }

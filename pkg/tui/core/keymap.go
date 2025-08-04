@@ -17,3 +17,19 @@ var DefaultKeyMap = keyMap{
 		key.WithHelp("tab", "focus next"),
 	),
 }
+
+type sidebarKeyMap struct {
+	FocusUp   key.Binding
+	FocusDown key.Binding
+}
+
+var DefaultSidebarKeyMap = sidebarKeyMap{
+	FocusUp: key.NewBinding(
+		key.WithKeys("up", "k"),
+		key.WithHelp("up, k", "focus up"),
+	),
+	FocusDown: key.NewBinding(
+		key.WithKeys("down", "j"),
+		key.WithHelp("down, j", "focus down"),
+	),
+}
