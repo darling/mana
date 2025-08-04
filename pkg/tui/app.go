@@ -5,10 +5,12 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/darling/mana/pkg/llm"
+
+	"github.com/darling/mana/pkg/tui/core"
 )
 
 func Run(manager *llm.Manager) error {
-	root := NewRootModel(manager)
+	root := core.NewRootCmp()
 
 	p := tea.NewProgram(
 		root,
