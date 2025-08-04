@@ -23,7 +23,7 @@ func (i SidebarItemCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (i SidebarItemCmp) View() string {
 	if i.focused {
-		return fmt.Sprintf("[ %s ]", i.label)
+		return FocusedItem.Render(fmt.Sprintf("> %s", i.label))
 	}
 	return fmt.Sprintf("  %s  ", i.label)
 }

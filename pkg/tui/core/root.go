@@ -49,7 +49,10 @@ func (m rootCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
-		m.focusManager, cmd = m.focusManager.UpdateAll(msg)
+		m.focusManager, cmd = m.focusManager.UpdateAll(tea.WindowSizeMsg{
+			Width:  msg.Width,
+			Height: msg.Height - 1,
+		})
 		cmds = append(cmds, cmd)
 
 	case tea.KeyPressMsg:

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/lipgloss/v2"
 
 	"github.com/darling/mana/pkg/tui/core/layout"
 )
@@ -26,7 +27,8 @@ func (m MainCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		newM.width = (msg.Width * 3) / 4
+		sidebarWidth := msg.Width / 4
+		newM.width = msg.Width - sidebarWidth
 		newM.height = msg.Height
 	case tea.KeyPressMsg:
 		if msg.Code == tea.KeyEnter {
@@ -38,11 +40,16 @@ func (m MainCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m MainCmp) View() string {
-	prefix := "X"
+	content := fmt.Sprintf("Main Content: %s", m.content)
+
+	var boxStyle lipgloss.Style
 	if m.focused {
-		prefix = "O"
+		boxStyle = FocusedBox
+	} else {
+		boxStyle = BlurredBox
 	}
-	return fmt.Sprintf("%s Main Content: %s", prefix, m.content)
+
+	return boxStyle.Width(m.width).Height(m.height).Render(content)
 }
 
 func (m MainCmp) SetFocused(focused bool) (layout.Focusable, tea.Cmd) {

@@ -171,6 +171,15 @@ func (fm FocusManager) GetFocused() (Focusable, error) {
 	return fm.components[fm.focusedIndex].Clone(), nil
 }
 
+func (fm FocusManager) Set(index int, component Focusable) (FocusManager, error) {
+	if index < 0 || index >= len(fm.components) {
+		return fm, errors.New("index out of bounds")
+	}
+	newFM := fm.Clone()
+	newFM.components[index] = component.Clone()
+	return newFM, nil
+}
+
 func (fm FocusManager) Clone() FocusManager {
 	return FocusManager{
 		components:   cloneComponents(fm.components),

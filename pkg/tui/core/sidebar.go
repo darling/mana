@@ -1,8 +1,6 @@
 package core
 
 import (
-	"fmt"
-
 	"github.com/charmbracelet/bubbles/v2/key"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
@@ -47,10 +45,9 @@ func (s SidebarCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		s.width = msg.Width / 4 // 25% of screen width
+		s.width = msg.Width / 4
 		s.height = msg.Height
-		s.focusManager, cmd = s.focusManager.UpdateAll(msg)
-		cmds = append(cmds, cmd)
+		// Children will be updated by FocusManager if they need resizing.
 	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, s.keys.FocusDown):
@@ -77,10 +74,23 @@ func (s SidebarCmp) View() string {
 		viewedComponents[i] = component.View()
 	}
 
-	sidebarHeading := fmt.Sprintf("Mana (%d)", len(viewedComponents))
+	x, _ := FocusedBox.GetFrameSize()
+
+	sidebarHeading := lipgloss.NewStyle().MaxWidth(s.width - x).Render(lipgloss.PlaceHorizontal(s.width-x, lipgloss.Center, "Mana"))
 
 	list := lipgloss.JoinVertical(lipgloss.Left, viewedComponents...)
-	return lipgloss.JoinVertical(lipgloss.Left, sidebarHeading, list)
+	content := lipgloss.JoinVertical(lipgloss.Left, sidebarHeading, list)
+
+	var boxStyle lipgloss.Style
+	if s.focused {
+		boxStyle = FocusedBox
+	} else {
+		boxStyle = BlurredBox
+	}
+
+	// Lipgloss's Width/Height applies to the content inside the box.
+	// We must subtract the padding and border from the total available size.
+	return boxStyle.Width(s.width).Height(s.height).Render(content)
 }
 
 func (s SidebarCmp) SetFocused(focused bool) (layout.Focusable, tea.Cmd) {
