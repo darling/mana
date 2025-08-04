@@ -29,11 +29,9 @@ func (m MainCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		newM.width = (msg.Width * 3) / 4
 		newM.height = msg.Height
 	case tea.KeyPressMsg:
-		if msg.String() == " " {
+		if msg.Code == tea.KeyEnter {
 			newM.content += "Updated!"
-			return newM, nil
 		}
-		return newM, func() tea.Msg { return layout.UnhandledMsg{Original: msg} }
 	}
 
 	return newM, nil

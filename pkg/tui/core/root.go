@@ -44,23 +44,27 @@ func (m rootCmp) Init() tea.Cmd {
 
 func (m rootCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
-	case tea.KeyPressMsg: // Pass key press messages to the focused	component
-		m, cmd = m.handleKeyPress(msg)
-		return m, cmd
-	case tea.WindowSizeMsg: // Everything else can propagate to the focus manager
+	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 		m.focusManager, cmd = m.focusManager.UpdateAll(msg)
-		return m, cmd
-	default:
-		m.focusManager, cmd = m.focusManager.UpdateAll(msg)
-		if unhandled, ok := msg.(layout.UnhandledMsg); ok {
-			return m.Update(unhandled.Original)
+		cmds = append(cmds, cmd)
+
+	case tea.KeyPressMsg:
+		m, cmd = m.handleKeyPress(msg)
+		if cmd != nil {
+			cmds = append(cmds, cmd)
 		}
+
+	// NOTE: Unhandled types get passed to the focused component for now
+	default:
+		m.focusManager, cmd = m.focusManager.UpdateFocused(msg)
+		cmds = append(cmds, cmd)
 	}
 
-	return m, cmd
+	return m, tea.Batch(cmds...)
 }
 
 func (m rootCmp) View() string {
@@ -77,14 +81,16 @@ func (m rootCmp) View() string {
 }
 
 func (m rootCmp) handleKeyPress(msg tea.KeyPressMsg) (rootCmp, tea.Cmd) {
+	var cmd tea.Cmd
+
 	switch {
 	case key.Matches(msg, m.keys.Quit):
 		return m, tea.Quit
 	case key.Matches(msg, m.keys.FocusNext):
-		var cmd tea.Cmd
 		m.focusManager, cmd = m.focusManager.FocusNext()
 		return m, cmd
 	default:
-		return m, nil
+		m.focusManager, cmd = m.focusManager.UpdateFocused(msg)
+		return m, cmd
 	}
 }

@@ -8,10 +8,6 @@ import (
 	"github.com/darling/mana/pkg/tui/core/components"
 )
 
-type UnhandledMsg struct {
-	Original tea.Msg
-}
-
 type Focusable interface {
 	components.Component
 
