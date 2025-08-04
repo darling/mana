@@ -54,17 +54,53 @@ func (fm FocusManager) FocusNext() (FocusManager, tea.Cmd) {
 		return fm, nil
 	}
 
-	newFM, blurCmd := fm.blurCurrent()
-
-	if newFM.focusedIndex == -1 {
+	if fm.focusedIndex == -1 {
+		newFM := fm
 		newFM.focusedIndex = 0
-	} else {
-		newFM.focusedIndex++
-		if newFM.wrap && newFM.focusedIndex >= len(newFM.components) {
-			newFM.focusedIndex = 0
-		} else if newFM.focusedIndex >= len(newFM.components) {
-			return newFM, blurCmd
-		}
+		var focusCmd tea.Cmd
+		newFM.components[newFM.focusedIndex], focusCmd = newFM.components[newFM.focusedIndex].SetFocused(true)
+		return newFM, focusCmd
+	}
+
+	if fm.focusedIndex == len(fm.components)-1 && !fm.wrap {
+		return fm, nil
+	}
+
+	newFM, blurCmd := fm.blurCurrent()
+	newFM.focusedIndex++
+
+	if newFM.focusedIndex >= len(newFM.components) {
+		newFM.focusedIndex = 0
+	}
+
+	var focusCmd tea.Cmd
+	newFM.components[newFM.focusedIndex], focusCmd = newFM.components[newFM.focusedIndex].SetFocused(true)
+
+	return newFM, tea.Batch(blurCmd, focusCmd)
+}
+
+func (fm FocusManager) FocusPrev() (FocusManager, tea.Cmd) {
+	if len(fm.components) == 0 {
+		return fm, nil
+	}
+
+	if fm.focusedIndex == -1 {
+		newFM := fm
+		newFM.focusedIndex = len(newFM.components) - 1
+		var focusCmd tea.Cmd
+		newFM.components[newFM.focusedIndex], focusCmd = newFM.components[newFM.focusedIndex].SetFocused(true)
+		return newFM, focusCmd
+	}
+
+	if fm.focusedIndex == 0 && !fm.wrap {
+		return fm, nil
+	}
+
+	newFM, blurCmd := fm.blurCurrent()
+	newFM.focusedIndex--
+
+	if newFM.focusedIndex < 0 {
+		newFM.focusedIndex = len(newFM.components) - 1
 	}
 
 	var focusCmd tea.Cmd

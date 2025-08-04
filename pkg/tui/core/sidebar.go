@@ -27,7 +27,7 @@ func NewSidebarCmp() *SidebarCmp {
 		NewSidebarItemCmp("Settings"),
 	}
 
-	fm := layout.NewFocusManager(items, true)
+	fm := layout.NewFocusManager(items, false)
 	fm, _ = fm.FocusNext()
 
 	return &SidebarCmp{
@@ -55,9 +55,8 @@ func (s SidebarCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, s.keys.FocusDown):
 			s.focusManager, cmd = s.focusManager.FocusNext()
-		// TODO:
-		// case key.Matches(msg, s.keys.FocusUp):
-		// 	s.focusManager, cmd = s.focusManager.FocusPrev()
+		case key.Matches(msg, s.keys.FocusUp):
+			s.focusManager, cmd = s.focusManager.FocusPrev()
 		default:
 			s.focusManager, cmd = s.focusManager.UpdateFocused(msg)
 			cmds = append(cmds, cmd)
