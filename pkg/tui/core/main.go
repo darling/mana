@@ -26,7 +26,7 @@ func (m MainCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	newM := m // Copy
 
 	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
+	case layout.ComponentSizeMsg:
 		sidebarWidth := msg.Width / 4
 		newM.width = msg.Width - sidebarWidth
 		newM.height = msg.Height

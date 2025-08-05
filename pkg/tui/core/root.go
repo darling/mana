@@ -49,9 +49,9 @@ func (m rootCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
-		m.focusManager, cmd = m.focusManager.UpdateAll(tea.WindowSizeMsg{
+		m.focusManager, cmd = m.focusManager.UpdateAll(layout.ComponentSizeMsg{
 			Width:  msg.Width,
-			Height: msg.Height - 1,
+			Height: msg.Height - 1, // Account for status bar
 		})
 		cmds = append(cmds, cmd)
 

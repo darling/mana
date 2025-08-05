@@ -44,7 +44,7 @@ func (s SidebarCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
+	case layout.ComponentSizeMsg:
 		s.width = msg.Width / 4
 		s.height = msg.Height
 		// Children will be updated by FocusManager if they need resizing.

@@ -18,3 +18,9 @@ type Contentable interface {
 type Help interface {
 	Bindings() []key.Binding
 }
+
+// ComponentSizeMsg is sent to components to inform them of their available space.
+type ComponentSizeMsg struct {
+	Width  int
+	Height int
+}
