@@ -3,10 +3,10 @@ package core
 import "github.com/charmbracelet/lipgloss/v2"
 
 var (
-	// Colors
-	subtle    = lipgloss.Color("#383838")
-	highlight = lipgloss.Color("#7D56F4") 
-	special   = lipgloss.Color("#73F59F")
+	// Colors using ANSI terminal colors
+	subtle    = lipgloss.Color("8") // Bright Black (Dark Gray)
+	highlight = lipgloss.Color("5") // Magenta
+	special   = lipgloss.Color("2") // Green
 
 	// Styles for components
 	FocusedBox = lipgloss.NewStyle().
