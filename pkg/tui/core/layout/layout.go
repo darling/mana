@@ -1,7 +1,6 @@
 package layout
 
 import (
-	"github.com/charmbracelet/bubbles/v2/key"
 	tea "github.com/charmbracelet/bubbletea/v2"
 )
 
@@ -13,10 +12,6 @@ type Sizeable interface {
 type Contentable interface {
 	SetContent(content string) tea.Cmd
 	GetContent() string
-}
-
-type Help interface {
-	Bindings() []key.Binding
 }
 
 // ComponentSizeMsg is sent to components to inform them of their available space.

@@ -79,6 +79,38 @@ func (s SidebarCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			s.focusManager, cmd = s.focusManager.FocusNext()
 		case key.Matches(msg, s.keys.FocusUp):
 			s.focusManager, cmd = s.focusManager.FocusPrev()
+		case key.Matches(msg, s.keys.Enter):
+			// Handle selection of current pane
+			focused, err := s.focusManager.GetFocused()
+			if err == nil {
+				if pane, ok := focused.(*SidebarPaneCmp); ok {
+					updatedPane := *pane
+					updatedPane.content = "Selected: " + updatedPane.title
+					// Find the focused index and update it
+					for i, comp := range s.focusManager.GetAll() {
+						if comp.IsFocused() {
+							s.focusManager, _ = s.focusManager.Set(i, &updatedPane)
+							break
+						}
+					}
+				}
+			}
+		case key.Matches(msg, s.keys.Create):
+			// Handle create action in current pane
+			focused, err := s.focusManager.GetFocused()
+			if err == nil {
+				if pane, ok := focused.(*SidebarPaneCmp); ok {
+					updatedPane := *pane
+					updatedPane.content = "Creating new in " + updatedPane.title
+					// Find the focused index and update it
+					for i, comp := range s.focusManager.GetAll() {
+						if comp.IsFocused() {
+							s.focusManager, _ = s.focusManager.Set(i, &updatedPane)
+							break
+						}
+					}
+				}
+			}
 		default:
 			s.focusManager, cmd = s.focusManager.UpdateFocused(msg)
 		}
@@ -133,4 +165,8 @@ func (m SidebarCmp) Clone() layout.Focusable {
 		width:  m.width,
 		height: m.height,
 	}
+}
+
+func (s SidebarCmp) Bindings() []key.Binding {
+	return []key.Binding{s.keys.FocusUp, s.keys.FocusDown, s.keys.Enter, s.keys.Create}
 }

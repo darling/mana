@@ -25,6 +25,7 @@ type rootCmp struct {
 func NewRootCmp() RootCmp {
 	sidebar := NewSidebarCmp()
 	main := NewMainCmp()
+	statusbar := NewStatusBarCmp("v0.1.0")
 
 	focusables := []layout.Focusable{sidebar.Clone(), main.Clone()}
 
@@ -33,13 +34,14 @@ func NewRootCmp() RootCmp {
 	fm, _ = fm.FocusNext()
 
 	return rootCmp{
+		statusbar:    statusbar,
 		keys:         DefaultKeyMap,
 		focusManager: fm,
 	}
 }
 
 func (m rootCmp) Init() tea.Cmd {
-	return nil
+	return m.getHelpCmd()
 }
 
 func (m rootCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -54,18 +56,29 @@ func (m rootCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Height: msg.Height - 1, // Account for status bar
 		})
 		cmds = append(cmds, cmd)
+		newStatusBar, cmd := m.statusbar.Update(layout.ComponentSizeMsg{Width: msg.Width})
+		m.statusbar = newStatusBar.(components.Component)
+		cmds = append(cmds, cmd)
 
 	case tea.KeyPressMsg:
 		m, cmd = m.handleKeyPress(msg)
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
+		// Update help after handling keys since focus might have changed
+		cmds = append(cmds, m.getHelpCmd())
 
 	// NOTE: Unhandled types get passed to the focused component for now
 	default:
 		m.focusManager, cmd = m.focusManager.UpdateFocused(msg)
 		cmds = append(cmds, cmd)
 	}
+
+	// Messages	always go to the status bar
+	var sbCmd tea.Cmd
+	newStatusBar, sbCmd := m.statusbar.Update(msg)
+	m.statusbar = newStatusBar.(components.Component)
+	cmds = append(cmds, sbCmd)
 
 	return m, tea.Batch(cmds...)
 }
@@ -80,7 +93,19 @@ func (m rootCmp) View() string {
 		return "Error retrieving main view: " + err.Error()
 	}
 
-	return lipgloss.JoinHorizontal(lipgloss.Top, sidebar.View(), main.View())
+	// First row: sidebar + main
+	top := lipgloss.JoinHorizontal(
+		lipgloss.Top,
+		sidebar.View(),
+		main.View(),
+	)
+
+	// Second row: status bar
+	return lipgloss.JoinVertical(
+		lipgloss.Left,
+		top,
+		m.statusbar.View(),
+	)
 }
 
 func (m rootCmp) handleKeyPress(msg tea.KeyPressMsg) (rootCmp, tea.Cmd) {
@@ -95,5 +120,24 @@ func (m rootCmp) handleKeyPress(msg tea.KeyPressMsg) (rootCmp, tea.Cmd) {
 	default:
 		m.focusManager, cmd = m.focusManager.UpdateFocused(msg)
 		return m, cmd
+	}
+}
+
+func (m rootCmp) getHelpCmd() tea.Cmd {
+	var bindings []key.Binding
+
+	// Get bindings from the focused component
+	focused, err := m.focusManager.GetFocused()
+	if err == nil {
+		if helpable, ok := focused.(layout.Help); ok {
+			bindings = append(bindings, helpable.Bindings()...)
+		}
+	}
+
+	// Add global key bindings
+	bindings = append(bindings, m.keys.FocusNext, m.keys.Quit)
+
+	return func() tea.Msg {
+		return layout.HelpUpdateMsg(bindings)
 	}
 }

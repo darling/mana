@@ -3,6 +3,7 @@ package core
 import (
 	"fmt"
 
+	"github.com/charmbracelet/bubbles/v2/key"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
 
@@ -14,10 +15,13 @@ type MainCmp struct {
 	width   int
 	height  int
 	content string
+	keys    mainKeyMap
 }
 
 func NewMainCmp() MainCmp {
-	return MainCmp{}
+	return MainCmp{
+		keys: DefaultMainKeyMap,
+	}
 }
 
 func (m MainCmp) Init() tea.Cmd { return nil }
@@ -31,8 +35,15 @@ func (m MainCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		newM.width = msg.Width - sidebarWidth
 		newM.height = msg.Height
 	case tea.KeyPressMsg:
-		if msg.Code == tea.KeyEnter {
-			newM.content += "Updated!"
+		if !m.focused {
+			return newM, nil
+		}
+
+		switch {
+		case key.Matches(msg, m.keys.Redraw):
+			newM.content = "Screen redrawn!"
+		case key.Matches(msg, m.keys.Create):
+			newM.content = "Creating new prompt..."
 		}
 	}
 
@@ -66,5 +77,10 @@ func (m MainCmp) Clone() layout.Focusable {
 		width:   m.width,
 		height:  m.height,
 		content: m.content,
+		keys:    m.keys,
 	}
+}
+
+func (m MainCmp) Bindings() []key.Binding {
+	return []key.Binding{m.keys.Redraw, m.keys.Create}
 }

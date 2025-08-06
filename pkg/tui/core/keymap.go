@@ -21,6 +21,8 @@ var DefaultKeyMap = keyMap{
 type sidebarKeyMap struct {
 	FocusUp   key.Binding
 	FocusDown key.Binding
+	Enter     key.Binding
+	Create    key.Binding
 }
 
 var DefaultSidebarKeyMap = sidebarKeyMap{
@@ -31,5 +33,29 @@ var DefaultSidebarKeyMap = sidebarKeyMap{
 	FocusDown: key.NewBinding(
 		key.WithKeys("down", "j"),
 		key.WithHelp("down, j", "focus down"),
+	),
+	Enter: key.NewBinding(
+		key.WithKeys("enter"),
+		key.WithHelp("enter", "select"),
+	),
+	Create: key.NewBinding(
+		key.WithKeys("c"),
+		key.WithHelp("c", "create new"),
+	),
+}
+
+type mainKeyMap struct {
+	Redraw key.Binding
+	Create key.Binding
+}
+
+var DefaultMainKeyMap = mainKeyMap{
+	Redraw: key.NewBinding(
+		key.WithKeys("enter"),
+		key.WithHelp("enter", "redraw"),
+	),
+	Create: key.NewBinding(
+		key.WithKeys("c"),
+		key.WithHelp("c", "create prompt"),
 	),
 }
