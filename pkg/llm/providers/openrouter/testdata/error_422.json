@@ -1,0 +1,7 @@
+{
+  "error": {
+    "message": "invalid-model-name-that-does-not-exist is not a valid model ID",
+    "code": 400
+  },
+  "user_id": "user_2o5G8s40LZNbmt6HJGM7INWdR7v"
+}
