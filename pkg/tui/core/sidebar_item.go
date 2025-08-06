@@ -46,8 +46,8 @@ func (p SidebarPaneCmp) View() string {
 	contentWidth := p.width - boxStyle.GetHorizontalPadding() - boxStyle.GetHorizontalFrameSize()
 	contentHeight := p.height - boxStyle.GetVerticalPadding() - boxStyle.GetVerticalFrameSize()
 
-	header := lipgloss.NewStyle().Bold(true).Padding(0, 1).Render(p.title)
-	body := lipgloss.NewStyle().Padding(0, 1).Render(p.content)
+	header := lipgloss.NewStyle().Bold(true).Render(p.title)
+	body := lipgloss.NewStyle().Render(p.content)
 
 	// Ensure content fits within the calculated dimensions.
 	body = lipgloss.NewStyle().
