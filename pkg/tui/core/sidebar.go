@@ -20,12 +20,13 @@ type SidebarCmp struct {
 
 func NewSidebarCmp() *SidebarCmp {
 	items := []layout.Focusable{
-		NewSidebarItemCmp("Conversations"),
-		NewSidebarItemCmp("Models"),
-		NewSidebarItemCmp("Settings"),
+		NewSidebarPaneCmp("Conversations"),
+		NewSidebarPaneCmp("Models"),
+		NewSidebarPaneCmp("Settings"),
 	}
 
 	fm := layout.NewFocusManager(items, false)
+	// Focus the first pane by default within the sidebar
 	fm, _ = fm.FocusNext()
 
 	return &SidebarCmp{
@@ -47,8 +48,32 @@ func (s SidebarCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case layout.ComponentSizeMsg:
 		s.width = msg.Width / 4
 		s.height = msg.Height
-		// Children will be updated by FocusManager if they need resizing.
+
+		// Distribute height among the three panes
+		paneHeight := s.height / 3
+		remainingHeight := s.height % 3
+
+		panes := s.focusManager.GetAll()
+		for i, pane := range panes {
+			h := paneHeight
+			if i < remainingHeight {
+				h++ // Distribute remainder to top panes
+			}
+			paneSize := layout.ComponentSizeMsg{Width: s.width, Height: h}
+
+			updatedPaneModel, updateCmd := pane.Update(paneSize)
+			if updatedPane, ok := updatedPaneModel.(layout.Focusable); ok {
+				s.focusManager, _ = s.focusManager.Set(i, updatedPane)
+			}
+			cmds = append(cmds, updateCmd)
+		}
+
 	case tea.KeyPressMsg:
+		// Only handle navigation keys if the sidebar itself is the focused component.
+		if !s.focused {
+			return s, nil
+		}
+
 		switch {
 		case key.Matches(msg, s.keys.FocusDown):
 			s.focusManager, cmd = s.focusManager.FocusNext()
@@ -56,10 +81,12 @@ func (s SidebarCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			s.focusManager, cmd = s.focusManager.FocusPrev()
 		default:
 			s.focusManager, cmd = s.focusManager.UpdateFocused(msg)
-			cmds = append(cmds, cmd)
 		}
+		cmds = append(cmds, cmd)
+
 	default:
-		s.focusManager, cmd = s.focusManager.UpdateFocused(msg)
+		// Pass other messages to all children, as they might be relevant regardless of focus
+		s.focusManager, cmd = s.focusManager.UpdateAll(msg)
 		cmds = append(cmds, cmd)
 	}
 
@@ -67,34 +94,28 @@ func (s SidebarCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (s SidebarCmp) View() string {
-	components := s.focusManager.GetAll()
+	panes := s.focusManager.GetAll()
+	viewedPanes := make([]string, len(panes))
 
-	viewedComponents := make([]string, len(components))
-	for i, component := range components {
-		viewedComponents[i] = component.View()
+	for i, pane := range panes {
+		p := pane.Clone()
+
+		// If the sidebar component itself is not focused, then none of its children
+		// should appear focused, regardless of their internal state.
+		if !s.focused {
+			p, _ = p.SetFocused(false)
+		}
+
+		viewedPanes[i] = p.View()
 	}
 
-	x, _ := FocusedBox.GetFrameSize()
-
-	sidebarHeading := lipgloss.NewStyle().MaxWidth(s.width - x).Render(lipgloss.PlaceHorizontal(s.width-x, lipgloss.Center, "Mana"))
-
-	list := lipgloss.JoinVertical(lipgloss.Left, viewedComponents...)
-	content := lipgloss.JoinVertical(lipgloss.Left, sidebarHeading, list)
-
-	var boxStyle lipgloss.Style
-	if s.focused {
-		boxStyle = FocusedBox
-	} else {
-		boxStyle = BlurredBox
-	}
-
-	// Lipgloss's Width/Height applies to the content inside the box.
-	// We must subtract the padding and border from the total available size.
-	return boxStyle.Width(s.width).Height(s.height).Render(content)
+	// The sidebar is now just a vertical container for the panes, with no border of its own.
+	return lipgloss.JoinVertical(lipgloss.Left, viewedPanes...)
 }
 
 func (s SidebarCmp) SetFocused(focused bool) (layout.Focusable, tea.Cmd) {
 	s.focused = focused
+	// The visual change is handled by the View() method, so no command is needed here.
 	return s, nil
 }
 
