@@ -60,13 +60,14 @@ func (m rootCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.statusbar = newStatusBar.(components.Component)
 		cmds = append(cmds, cmd)
 
+	case layout.FocusChangedMsg:
+		return m, m.getHelpCmd()
+
 	case tea.KeyPressMsg:
 		m, cmd = m.handleKeyPress(msg)
 		if cmd != nil {
 			cmds = append(cmds, cmd)
 		}
-		// Update help after handling keys since focus might have changed
-		cmds = append(cmds, m.getHelpCmd())
 
 	// NOTE: Unhandled types get passed to the focused component for now
 	default:

@@ -8,6 +8,10 @@ import (
 	"github.com/darling/mana/pkg/tui/core/components"
 )
 
+// FocusChangedMsg is a message used to signal that the focused component has changed.
+// It is used to trigger updates in other components, such as the help view in the status bar.
+type FocusChangedMsg struct{}
+
 type Focusable interface {
 	components.Component
 
@@ -49,34 +53,44 @@ func (fm FocusManager) blurCurrent() (FocusManager, tea.Cmd) {
 	return newFM, cmd
 }
 
+// focus is an internal helper that handles the logic of changing focus. It blurs
+// the previously focused component, focuses the new one, and dispatches a
+// FocusChangedMsg to signal the change.
+func (fm FocusManager) focus(index int) (FocusManager, tea.Cmd) {
+	if fm.focusedIndex == index && fm.focusedIndex != -1 {
+		return fm, nil // No change, no command.
+	}
+
+	// Get a blurred manager and the blur command.
+	blurredFM, blurCmd := fm.blurCurrent()
+
+	// Use this new manager state to set focus.
+	focusedFM := blurredFM
+	focusedFM.focusedIndex = index
+	var focusCmd tea.Cmd
+	focusedFM.components[focusedFM.focusedIndex], focusCmd = focusedFM.components[focusedFM.focusedIndex].SetFocused(true)
+
+	// Command to signal that focus has changed.
+	focusChangedCmd := func() tea.Msg { return FocusChangedMsg{} }
+
+	return focusedFM, tea.Batch(blurCmd, focusCmd, focusChangedCmd)
+}
+
 func (fm FocusManager) FocusNext() (FocusManager, tea.Cmd) {
 	if len(fm.components) == 0 {
 		return fm, nil
 	}
 
 	if fm.focusedIndex == -1 {
-		newFM := fm
-		newFM.focusedIndex = 0
-		var focusCmd tea.Cmd
-		newFM.components[newFM.focusedIndex], focusCmd = newFM.components[newFM.focusedIndex].SetFocused(true)
-		return newFM, focusCmd
+		return fm.focus(0)
 	}
 
 	if fm.focusedIndex == len(fm.components)-1 && !fm.wrap {
 		return fm, nil
 	}
 
-	newFM, blurCmd := fm.blurCurrent()
-	newFM.focusedIndex++
-
-	if newFM.focusedIndex >= len(newFM.components) {
-		newFM.focusedIndex = 0
-	}
-
-	var focusCmd tea.Cmd
-	newFM.components[newFM.focusedIndex], focusCmd = newFM.components[newFM.focusedIndex].SetFocused(true)
-
-	return newFM, tea.Batch(blurCmd, focusCmd)
+	nextIndex := (fm.focusedIndex + 1) % len(fm.components)
+	return fm.focus(nextIndex)
 }
 
 func (fm FocusManager) FocusPrev() (FocusManager, tea.Cmd) {
@@ -85,28 +99,18 @@ func (fm FocusManager) FocusPrev() (FocusManager, tea.Cmd) {
 	}
 
 	if fm.focusedIndex == -1 {
-		newFM := fm
-		newFM.focusedIndex = len(newFM.components) - 1
-		var focusCmd tea.Cmd
-		newFM.components[newFM.focusedIndex], focusCmd = newFM.components[newFM.focusedIndex].SetFocused(true)
-		return newFM, focusCmd
+		return fm.focus(len(fm.components) - 1)
 	}
 
 	if fm.focusedIndex == 0 && !fm.wrap {
 		return fm, nil
 	}
 
-	newFM, blurCmd := fm.blurCurrent()
-	newFM.focusedIndex--
-
-	if newFM.focusedIndex < 0 {
-		newFM.focusedIndex = len(newFM.components) - 1
+	prevIndex := fm.focusedIndex - 1
+	if prevIndex < 0 {
+		prevIndex = len(fm.components) - 1
 	}
-
-	var focusCmd tea.Cmd
-	newFM.components[newFM.focusedIndex], focusCmd = newFM.components[newFM.focusedIndex].SetFocused(true)
-
-	return newFM, tea.Batch(blurCmd, focusCmd)
+	return fm.focus(prevIndex)
 }
 
 func (fm FocusManager) Focus(index int) (FocusManager, tea.Cmd, error) {
@@ -114,13 +118,8 @@ func (fm FocusManager) Focus(index int) (FocusManager, tea.Cmd, error) {
 		return fm, nil, errors.New("index out of bounds")
 	}
 
-	newFM, blurCmd := fm.blurCurrent()
-	newFM.focusedIndex = index
-
-	var focusCmd tea.Cmd
-	newFM.components[newFM.focusedIndex], focusCmd = newFM.components[newFM.focusedIndex].SetFocused(true)
-
-	return newFM, tea.Batch(blurCmd, focusCmd), nil
+	newFM, cmd := fm.focus(index)
+	return newFM, cmd, nil
 }
 
 func (fm FocusManager) UpdateFocused(msg tea.Msg) (FocusManager, tea.Cmd) {

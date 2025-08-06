@@ -28,11 +28,11 @@ type sidebarKeyMap struct {
 var DefaultSidebarKeyMap = sidebarKeyMap{
 	FocusUp: key.NewBinding(
 		key.WithKeys("up", "k"),
-		key.WithHelp("up, k", "focus up"),
+		key.WithHelp("↑/k", "focus up"),
 	),
 	FocusDown: key.NewBinding(
 		key.WithKeys("down", "j"),
-		key.WithHelp("down, j", "focus down"),
+		key.WithHelp("↓/j", "focus down"),
 	),
 	Enter: key.NewBinding(
 		key.WithKeys("enter"),
