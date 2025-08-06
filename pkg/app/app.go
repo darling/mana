@@ -19,17 +19,13 @@ func New(buildInfo version.BuildInfo) *cli.Command {
 	)
 
 	return &cli.Command{
-		Name:  "mana",
-		Usage: "The cutest LLM interface for your terminal",
+		Name:    "mana",
+		Usage:   "The cutest LLM interface for your terminal",
+		Version: buildInfo.GetVersion(),
 		Action: func(ctx context.Context, c *cli.Command) error {
 			return tui.Run(llmManager)
 		},
 		Flags: []cli.Flag{
-			&cli.BoolFlag{
-				Name:    "version",
-				Aliases: []string{"v"},
-				Usage:   "Show the current version",
-			},
 			&cli.StringFlag{
 				Name:        "openrouter-api-key",
 				Usage:       "OpenRouter API key",
@@ -40,13 +36,6 @@ func New(buildInfo version.BuildInfo) *cli.Command {
 			},
 		},
 		Before: func(ctx context.Context, c *cli.Command) (context.Context, error) {
-			if c.Bool("version") {
-				if err := cmd.NewVersionAction(buildInfo)(ctx, c); err != nil {
-					return ctx, err
-				}
-				return ctx, cli.Exit("", 0)
-			}
-
 			// Initialize LLM manager if API key is provided
 			if openRouterAPIKey != "" {
 				manager, err := llm.NewManager("openrouter", llm.Config{
