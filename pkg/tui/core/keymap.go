@@ -45,8 +45,9 @@ var DefaultSidebarKeyMap = sidebarKeyMap{
 }
 
 type mainKeyMap struct {
-	Redraw key.Binding
-	Create key.Binding
+	Redraw     key.Binding
+	Create     key.Binding
+	ShowDialog key.Binding
 }
 
 var DefaultMainKeyMap = mainKeyMap{
@@ -57,5 +58,9 @@ var DefaultMainKeyMap = mainKeyMap{
 	Create: key.NewBinding(
 		key.WithKeys("c"),
 		key.WithHelp("c", "create prompt"),
+	),
+	ShowDialog: key.NewBinding(
+		key.WithKeys("d"),
+		key.WithHelp("d", "show dialog"),
 	),
 }

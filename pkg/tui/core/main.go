@@ -34,6 +34,10 @@ func (m MainCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		sidebarWidth := msg.Width / 4
 		newM.width = msg.Width - sidebarWidth
 		newM.height = msg.Height
+	case layout.ConfirmedMsg:
+		newM.content = "Dialog confirmed! Action executed."
+	case layout.CancelledMsg:
+		newM.content = "Dialog cancelled."
 	case tea.KeyPressMsg:
 		if !m.focused {
 			return newM, nil
@@ -44,6 +48,10 @@ func (m MainCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			newM.content = "Screen redrawn!"
 		case key.Matches(msg, m.keys.Create):
 			newM.content = "Creating new prompt..."
+		case key.Matches(msg, m.keys.ShowDialog):
+			return newM, func() tea.Msg {
+				return layout.ShowConfirmDialogMsg{Text: "Are you sure you want to delete this conversation?"}
+			}
 		}
 	}
 
@@ -82,5 +90,5 @@ func (m MainCmp) Clone() layout.Focusable {
 }
 
 func (m MainCmp) Bindings() []key.Binding {
-	return []key.Binding{m.keys.Redraw, m.keys.Create}
+	return []key.Binding{m.keys.Redraw, m.keys.Create, m.keys.ShowDialog}
 }

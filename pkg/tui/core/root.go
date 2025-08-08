@@ -18,6 +18,7 @@ type rootCmp struct {
 	keys keyMap
 
 	focusManager layout.FocusManager
+	layerManager *layout.LayerManager
 
 	width, height int
 }
@@ -30,13 +31,14 @@ func NewRootCmp() RootCmp {
 	focusables := []layout.Focusable{sidebar.Clone(), main.Clone()}
 
 	fm := layout.NewFocusManager(focusables, true)
-	// Ignore the given command as we just want to set state before the first render
-	fm, _ = fm.FocusNext()
+	// Focus the main panel (index 1) by default before first render
+	fm, _, _ = fm.Focus(1)
 
 	return rootCmp{
 		statusbar:    statusbar,
 		keys:         DefaultKeyMap,
 		focusManager: fm,
+		layerManager: layout.NewLayerManager(),
 	}
 }
 
@@ -51,6 +53,7 @@ func (m rootCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
+		m.layerManager.SetSize(msg.Width, msg.Height)
 		m.focusManager, cmd = m.focusManager.UpdateAll(layout.ComponentSizeMsg{
 			Width:  msg.Width,
 			Height: msg.Height - 1, // Account for status bar
@@ -63,16 +66,57 @@ func (m rootCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case layout.FocusChangedMsg:
 		return m, m.getHelpCmd()
 
+	case layout.OpenLayerMsg:
+		cmd = m.layerManager.Push(msg.Layer)
+		cmds = append(cmds, cmd, m.getHelpCmd())
+
+	case layout.DismissLayerMsg:
+		cmd = m.layerManager.Pop()
+		cmds = append(cmds, cmd, m.getHelpCmd())
+
+	case layout.DismissLayerByIDMsg:
+		cmd = m.layerManager.PopByID(msg.ID)
+		cmds = append(cmds, cmd, m.getHelpCmd())
+
+	case layout.ShowConfirmDialogMsg:
+		dialog := layout.NewConfirmDialog(msg.Text)
+		cmd = m.layerManager.Push(dialog)
+		cmds = append(cmds, cmd, m.getHelpCmd())
+
+	case layout.ConfirmedMsg:
+		cmd = m.layerManager.Pop()
+		cmds = append(cmds, cmd, m.getHelpCmd())
+
+	case layout.CancelledMsg:
+		cmd = m.layerManager.Pop()
+		cmds = append(cmds, cmd, m.getHelpCmd())
+
 	case tea.KeyPressMsg:
-		m, cmd = m.handleKeyPress(msg)
-		if cmd != nil {
-			cmds = append(cmds, cmd)
+		// First try layer manager
+		var handled bool
+		m.layerManager, cmd, handled = m.layerManager.Update(msg)
+		if handled {
+			cmds = append(cmds, cmd, m.getHelpCmd())
+		} else {
+			// Fall back to base key handling
+			m, cmd = m.handleKeyPress(msg)
+			if cmd != nil {
+				cmds = append(cmds, cmd)
+			}
 		}
 
-	// NOTE: Unhandled types get passed to the focused component for now
+	// NOTE: Unhandled types get passed to layers first, then focused component
 	default:
-		m.focusManager, cmd = m.focusManager.UpdateFocused(msg)
-		cmds = append(cmds, cmd)
+		// Try layers first
+		var handled bool
+		m.layerManager, cmd, handled = m.layerManager.Update(msg)
+		if handled {
+			cmds = append(cmds, cmd)
+		} else {
+			// Fall back to focused component
+			m.focusManager, cmd = m.focusManager.UpdateFocused(msg)
+			cmds = append(cmds, cmd)
+		}
 	}
 
 	// Messages	always go to the status bar
@@ -102,11 +146,14 @@ func (m rootCmp) View() string {
 	)
 
 	// Second row: status bar
-	return lipgloss.JoinVertical(
+	base := lipgloss.JoinVertical(
 		lipgloss.Left,
 		top,
 		m.statusbar.View(),
 	)
+
+	// Let layers render over the base content
+	return m.layerManager.RenderOver(base)
 }
 
 func (m rootCmp) handleKeyPress(msg tea.KeyPressMsg) (rootCmp, tea.Cmd) {
@@ -127,16 +174,23 @@ func (m rootCmp) handleKeyPress(msg tea.KeyPressMsg) (rootCmp, tea.Cmd) {
 func (m rootCmp) getHelpCmd() tea.Cmd {
 	var bindings []key.Binding
 
-	// Get bindings from the focused component
-	focused, err := m.focusManager.GetFocused()
-	if err == nil {
-		if helpable, ok := focused.(layout.Help); ok {
-			bindings = append(bindings, helpable.Bindings()...)
+	// First check if there's an active layer with help bindings
+	if layerBindings := m.layerManager.HelpBindings(); len(layerBindings) > 0 {
+		bindings = append(bindings, layerBindings...)
+	} else {
+		// Get bindings from the focused component if no layer is active
+		focused, err := m.focusManager.GetFocused()
+		if err == nil {
+			if helpable, ok := focused.(layout.Help); ok {
+				bindings = append(bindings, helpable.Bindings()...)
+			}
 		}
 	}
 
-	// Add global key bindings
-	bindings = append(bindings, m.keys.FocusNext, m.keys.Quit)
+	// Add global key bindings (unless a modal layer is active)
+	if top := m.layerManager.Top(); top == nil || !top.LayerMeta().Modal {
+		bindings = append(bindings, m.keys.FocusNext, m.keys.Quit)
+	}
 
 	return func() tea.Msg {
 		return layout.HelpUpdateMsg(bindings)
