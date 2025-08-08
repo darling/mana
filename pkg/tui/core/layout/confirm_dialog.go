@@ -2,6 +2,7 @@ package layout
 
 import (
 	"github.com/charmbracelet/bubbles/v2/key"
+	"github.com/charmbracelet/bubbles/v2/textinput"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
 )
@@ -128,4 +129,107 @@ func (c *ConfirmDialog) LayerMeta() LayerMeta {
 			Anchor: Center,
 		},
 	}
+}
+
+// PromptDialog is a modal layer to capture a prompt from the user
+type PromptDialog struct {
+	focused bool
+	width   int
+	height  int
+	input   textinput.Model
+	keys    struct {
+		Submit key.Binding
+		Cancel key.Binding
+	}
+}
+
+func NewPromptDialog(initial string) *PromptDialog {
+	ti := textinput.New()
+	ti.Placeholder = "Type your message..."
+	ti.SetValue(initial)
+	ti.Prompt = "> "
+	ti.CursorEnd()
+	ti.Focus()
+
+	pd := &PromptDialog{input: ti}
+	pd.keys.Submit = key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "send"))
+	pd.keys.Cancel = key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "cancel"))
+	return pd
+}
+
+func (p *PromptDialog) Init() tea.Cmd { return nil }
+
+func (p *PromptDialog) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch m := msg.(type) {
+	case tea.KeyPressMsg:
+		switch {
+		case key.Matches(m, p.keys.Submit):
+			text := p.input.Value()
+			return p, func() tea.Msg { return PromptSubmittedMsg{Text: text} }
+		case key.Matches(m, p.keys.Cancel):
+			return p, func() tea.Msg { return CancelledMsg{} }
+		}
+	}
+	var cmd tea.Cmd
+	p.input, cmd = p.input.Update(msg)
+	return p, cmd
+}
+
+func (p *PromptDialog) View() string {
+	style := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("62")).
+		Padding(1, 2).
+		Width(max(40, p.width/2)).
+		Align(lipgloss.Left).
+		Foreground(lipgloss.Color("15"))
+
+	controls := lipgloss.NewStyle().Foreground(lipgloss.Color("10")).Render("[Enter]") +
+		" Send • " +
+		lipgloss.NewStyle().Foreground(lipgloss.Color("9")).Render("[Esc]") +
+		" Cancel"
+
+	return style.Render(p.input.View() + "\n\n" + controls)
+}
+
+func (p *PromptDialog) SetSize(width, height int) tea.Cmd {
+	p.width, p.height = width, height
+	boxWidth := max(40, width/2)
+	inputWidth := boxWidth - 6 // account for border and padding
+	if inputWidth < 10 {
+		inputWidth = 10
+	}
+	p.input.SetWidth(inputWidth)
+	return nil
+}
+func (p *PromptDialog) GetSize() (int, int) { return p.width, p.height }
+func (p *PromptDialog) SetFocused(focused bool) (FocusScope, tea.Cmd) {
+	p.focused = focused
+	if focused {
+		p.input.Focus()
+	} else {
+		p.input.Blur()
+	}
+	return p, nil
+}
+func (p *PromptDialog) IsFocused() bool         { return p.focused }
+func (p *PromptDialog) Clone() FocusScope       { clone := *p; return &clone }
+func (p *PromptDialog) Bindings() []key.Binding { return []key.Binding{p.keys.Submit, p.keys.Cancel} }
+func (p *PromptDialog) LayerMeta() LayerMeta {
+	return LayerMeta{
+		ID:          "prompt",
+		Z:           100,
+		Modal:       true,
+		CaptureKeys: true,
+		DismissKeys: []string{"esc"},
+		Scrim:       true,
+		Pos:         Position{Anchor: Center},
+	}
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }

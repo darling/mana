@@ -10,7 +10,7 @@ import (
 )
 
 func Run(manager *llm.Manager) error {
-	root := core.NewRootCmp()
+	root := core.NewRootCmp(manager)
 
 	p := tea.NewProgram(
 		root,

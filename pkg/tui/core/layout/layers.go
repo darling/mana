@@ -74,3 +74,11 @@ type DismissLayerByIDMsg struct {
 type ShowConfirmDialogMsg struct {
 	Text string
 }
+
+// ShowPromptDialogMsg requests opening the prompt dialog
+type ShowPromptDialogMsg struct{}
+
+// PromptSubmittedMsg is emitted by the prompt dialog when user submits text
+type PromptSubmittedMsg struct {
+	Text string
+}

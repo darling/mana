@@ -54,5 +54,7 @@ func (s StatusBarCmp) View() string {
 	availableWidth := s.width - lipgloss.Width(helpView)
 	versionStyle := lipgloss.NewStyle().Width(availableWidth).Align(lipgloss.Right)
 
-	return lipgloss.JoinHorizontal(lipgloss.Top, helpView, versionStyle.Render(versionView))
+	row := lipgloss.JoinHorizontal(lipgloss.Top, helpView, versionStyle.Render(versionView))
+	// Clamp to one visual row to avoid pushing layout
+	return lipgloss.NewStyle().MaxWidth(s.width).Width(s.width).MaxHeight(1).Height(1).Render(row)
 }

@@ -4,6 +4,7 @@ import (
 	"github.com/charmbracelet/bubbles/v2/key"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
+	"github.com/darling/mana/pkg/llm"
 	"github.com/darling/mana/pkg/tui/core/components"
 	"github.com/darling/mana/pkg/tui/core/layout"
 )
@@ -21,11 +22,13 @@ type rootCmp struct {
 	layerManager *layout.LayerManager
 
 	width, height int
+
+	llmManager *llm.Manager
 }
 
-func NewRootCmp() RootCmp {
+func NewRootCmp(manager *llm.Manager) RootCmp {
 	sidebar := NewSidebarCmp()
-	main := NewMainCmp()
+	main := NewMainCmp(manager)
 	statusbar := NewStatusBarCmp("v0.1.0")
 
 	focusables := []layout.Focusable{sidebar.Clone(), main.Clone()}
@@ -39,6 +42,7 @@ func NewRootCmp() RootCmp {
 		keys:         DefaultKeyMap,
 		focusManager: fm,
 		layerManager: layout.NewLayerManager(),
+		llmManager:   manager,
 	}
 }
 
@@ -83,6 +87,11 @@ func (m rootCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = m.layerManager.Push(dialog)
 		cmds = append(cmds, cmd, m.getHelpCmd())
 
+	case layout.ShowPromptDialogMsg:
+		dialog := layout.NewPromptDialog("")
+		cmd = m.layerManager.Push(dialog)
+		cmds = append(cmds, cmd, m.getHelpCmd())
+
 	case layout.ConfirmedMsg:
 		cmd = m.layerManager.Pop()
 		cmds = append(cmds, cmd, m.getHelpCmd())
@@ -90,6 +99,13 @@ func (m rootCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case layout.CancelledMsg:
 		cmd = m.layerManager.Pop()
 		cmds = append(cmds, cmd, m.getHelpCmd())
+
+	case layout.PromptSubmittedMsg:
+		// Dismiss the prompt layer and forward the message to the focused component (main view)
+		cmd = m.layerManager.Pop()
+		cmds = append(cmds, cmd, m.getHelpCmd())
+		m.focusManager, cmd = m.focusManager.UpdateFocused(msg)
+		cmds = append(cmds, cmd)
 
 	case tea.KeyPressMsg:
 		// First try layer manager
@@ -145,11 +161,12 @@ func (m rootCmp) View() string {
 		main.View(),
 	)
 
-	// Second row: status bar
+	// Second row: status bar. Force a single-line status regardless of content above.
+	status := lipgloss.NewStyle().Width(m.width).MaxWidth(m.width).Height(1).MaxHeight(1).Render(m.statusbar.View())
 	base := lipgloss.JoinVertical(
 		lipgloss.Left,
 		top,
-		m.statusbar.View(),
+		status,
 	)
 
 	// Let layers render over the base content
