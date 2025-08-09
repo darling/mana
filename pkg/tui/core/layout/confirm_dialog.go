@@ -2,7 +2,7 @@ package layout
 
 import (
 	"github.com/charmbracelet/bubbles/v2/key"
-	"github.com/charmbracelet/bubbles/v2/textinput"
+	"github.com/charmbracelet/bubbles/v2/textarea"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
 )
@@ -136,7 +136,7 @@ type PromptDialog struct {
 	focused bool
 	width   int
 	height  int
-	input   textinput.Model
+	input   textarea.Model
 	keys    struct {
 		Submit key.Binding
 		Cancel key.Binding
@@ -144,11 +144,9 @@ type PromptDialog struct {
 }
 
 func NewPromptDialog(initial string) *PromptDialog {
-	ti := textinput.New()
+	ti := textarea.New()
 	ti.Placeholder = "Type your message..."
 	ti.SetValue(initial)
-	ti.Prompt = "> "
-	ti.CursorEnd()
 	ti.Focus()
 
 	pd := &PromptDialog{input: ti}
@@ -157,7 +155,7 @@ func NewPromptDialog(initial string) *PromptDialog {
 	return pd
 }
 
-func (p *PromptDialog) Init() tea.Cmd { return nil }
+func (p *PromptDialog) Init() tea.Cmd { return textarea.Blink }
 
 func (p *PromptDialog) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m := msg.(type) {
@@ -200,6 +198,23 @@ func (p *PromptDialog) SetSize(width, height int) tea.Cmd {
 		inputWidth = 10
 	}
 	p.input.SetWidth(inputWidth)
+	// Aim for a few visible lines; cap to dialog height if small
+	visibleLines := 6
+	if height > 0 {
+		// Roughly estimate available height inside the box (accounting for borders and controls)
+		boxHeight := max(8, height/3)
+		if boxHeight < 8 {
+			boxHeight = 8
+		}
+		// Reserve ~3 lines for controls and padding
+		if boxHeight-3 < visibleLines {
+			visibleLines = boxHeight - 3
+			if visibleLines < 3 {
+				visibleLines = 3
+			}
+		}
+	}
+	p.input.SetHeight(visibleLines)
 	return nil
 }
 func (p *PromptDialog) GetSize() (int, int) { return p.width, p.height }

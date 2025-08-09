@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/v2/key"
 	"github.com/charmbracelet/bubbles/v2/viewport"
 	tea "github.com/charmbracelet/bubbletea/v2"
+	"github.com/charmbracelet/glamour/v2"
 	"github.com/charmbracelet/lipgloss/v2"
 
 	"github.com/darling/mana/pkg/llm"
@@ -23,6 +24,7 @@ type MainCmp struct {
 	messages   []llm.Message
 	llmManager *llm.Manager
 	keys       mainKeyMap
+	renderer   *glamour.TermRenderer
 }
 
 // ChatResponseMsg is delivered when the LLM returns a response
@@ -32,9 +34,19 @@ type ChatResponseMsg struct {
 }
 
 func NewMainCmp(manager *llm.Manager) MainCmp {
+	// Initialize with a sane default renderer; will be resized on first ComponentSizeMsg
+	var r *glamour.TermRenderer
+	if tmp, err := glamour.NewTermRenderer(
+		glamour.WithEnvironmentConfig(),
+		glamour.WithStandardStyle("dark"),
+		glamour.WithWordWrap(80),
+	); err == nil {
+		r = tmp
+	}
 	return MainCmp{
 		keys:       DefaultMainKeyMap,
 		llmManager: manager,
+		renderer:   r,
 	}
 }
 
@@ -53,6 +65,16 @@ func (m MainCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			viewport.WithWidth(innerW),
 			viewport.WithHeight(innerH),
 		)
+		// (Re)create markdown renderer to match inner width
+		if r, err := glamour.NewTermRenderer(
+			glamour.WithEnvironmentConfig(),
+			glamour.WithStandardStyle("dark"),
+			glamour.WithWordWrap(innerW),
+		); err == nil {
+			newM.renderer = r
+		} else {
+			newM.renderer = nil
+		}
 		newM.vp.SetContent(newM.renderMessages(innerW))
 	case layout.ConfirmedMsg:
 		// no-op in chat view
@@ -154,6 +176,7 @@ func (m MainCmp) Clone() layout.Focusable {
 		messages:   append([]llm.Message(nil), m.messages...),
 		llmManager: m.llmManager,
 		keys:       m.keys,
+		renderer:   m.renderer,
 	}
 }
 
@@ -176,7 +199,15 @@ func (m MainCmp) renderMessages(innerWidth int) string {
 			role = "assistant"
 		}
 		b.WriteString(fmt.Sprintf("%s:\n", role))
-		b.WriteString(hardWrap(msg.Content, innerWidth))
+		if m.renderer != nil {
+			if out, err := m.renderer.Render(msg.Content); err == nil {
+				b.WriteString(out)
+			} else {
+				b.WriteString(hardWrap(msg.Content, innerWidth))
+			}
+		} else {
+			b.WriteString(hardWrap(msg.Content, innerWidth))
+		}
 	}
 	return b.String()
 }
