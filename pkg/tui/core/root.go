@@ -4,7 +4,7 @@ import (
 	"github.com/charmbracelet/bubbles/v2/key"
 	tea "github.com/charmbracelet/bubbletea/v2"
 	"github.com/charmbracelet/lipgloss/v2"
-	"github.com/darling/mana/pkg/llm"
+	"github.com/darling/mana/pkg/chat"
 	"github.com/darling/mana/pkg/tui/core/components"
 	"github.com/darling/mana/pkg/tui/core/layout"
 )
@@ -23,12 +23,12 @@ type rootCmp struct {
 
 	width, height int
 
-	llmManager *llm.Manager
+	chatService chat.Service
 }
 
-func NewRootCmp(manager *llm.Manager) RootCmp {
+func NewRootCmp(service chat.Service) RootCmp {
 	sidebar := NewSidebarCmp()
-	main := NewMainCmp(manager)
+	main := NewMainCmp(service)
 	statusbar := NewStatusBarCmp("v0.1.0")
 
 	focusables := []layout.Focusable{sidebar.Clone(), main.Clone()}
@@ -42,7 +42,7 @@ func NewRootCmp(manager *llm.Manager) RootCmp {
 		keys:         DefaultKeyMap,
 		focusManager: fm,
 		layerManager: layout.NewLayerManager(),
-		llmManager:   manager,
+		chatService:  service,
 	}
 }
 

@@ -27,4 +27,20 @@ var (
 			BorderBottom(true).
 			BorderForeground(subtle).
 			MarginBottom(1)
+
+	// Message styles
+	MessageBlock = lipgloss.NewStyle().
+			MarginBottom(1)
+
+	MessageLabelBase = lipgloss.NewStyle().
+				Bold(true)
+
+	MessageLabelUser = MessageLabelBase.
+				Foreground(lipgloss.Color("12")) // Bright Blue
+
+	MessageLabelAssistant = MessageLabelBase.
+				Foreground(special) // Green
+
+	MessageLabelSystem = MessageLabelBase.
+				Foreground(highlight) // Magenta
 )

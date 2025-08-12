@@ -25,6 +25,24 @@ type Provider interface {
 	Close() error
 }
 
+// StreamData is the unit emitted by streaming providers.
+// Exactly one of Delta/Done/Err should be set at a time.
+type StreamData struct {
+	// Delta is the incremental content (may be empty when signalling Done or Err).
+	Delta string
+	// Done indicates the stream has completed successfully.
+	Done bool
+	// Err contains an error encountered during streaming.
+	Err error
+}
+
+// StreamingProvider can stream incremental assistant output.
+// Providers that do not implement this interface will be wrapped by Manager
+// to provide a compatibility stream that emits a single Delta+Done.
+type StreamingProvider interface {
+	GenerateStream(ctx context.Context, history []Message) (<-chan StreamData, error)
+}
+
 type Config struct {
 	APIKey string
 	Model  string
@@ -58,6 +76,31 @@ func NewManager(providerType string, config Config) (*Manager, error) {
 
 func (m *Manager) Generate(ctx context.Context, history []Message) (Message, error) {
 	return m.provider.Generate(ctx, history)
+}
+
+// GenerateStream returns a stream of incremental tokens. If the underlying
+// provider does not implement streaming, this method will perform a single
+// Generate call and emit one StreamData with the full content followed by Done.
+func (m *Manager) GenerateStream(ctx context.Context, history []Message) (<-chan StreamData, error) {
+	if sp, ok := m.provider.(StreamingProvider); ok {
+		return sp.GenerateStream(ctx, history)
+	}
+
+	// Fallback path: non-streaming provider
+	ch := make(chan StreamData, 2)
+	go func() {
+		defer close(ch)
+		msg, err := m.provider.Generate(ctx, history)
+		if err != nil {
+			ch <- StreamData{Err: err}
+			return
+		}
+		if msg.Content != "" {
+			ch <- StreamData{Delta: msg.Content}
+		}
+		ch <- StreamData{Done: true}
+	}()
+	return ch, nil
 }
 
 func (m *Manager) ListModels(ctx context.Context) ([]string, error) {

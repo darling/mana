@@ -4,13 +4,13 @@ import (
 	"log"
 
 	tea "github.com/charmbracelet/bubbletea/v2"
-	"github.com/darling/mana/pkg/llm"
+	"github.com/darling/mana/pkg/chat"
 
 	"github.com/darling/mana/pkg/tui/core"
 )
 
-func Run(manager *llm.Manager) error {
-	root := core.NewRootCmp(manager)
+func Run(service chat.Service) error {
+	root := core.NewRootCmp(service)
 
 	p := tea.NewProgram(
 		root,
