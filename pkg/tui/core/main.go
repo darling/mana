@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"unicode"
 
@@ -12,28 +11,29 @@ import (
 	"github.com/charmbracelet/glamour/v2"
 	"github.com/charmbracelet/lipgloss/v2"
 
-	"github.com/darling/mana/pkg/llm"
+	"github.com/darling/mana/pkg/chat"
 	"github.com/darling/mana/pkg/tui/core/layout"
 )
 
 type MainCmp struct {
-	focused    bool
-	width      int
-	height     int
-	vp         viewport.Model
-	messages   []llm.Message
-	llmManager *llm.Manager
-	keys       mainKeyMap
-	renderer   *glamour.TermRenderer
+	focused     bool
+	width       int
+	height      int
+	vp          viewport.Model
+	messages    []chat.Message
+	chatService chat.Service
+	convID      chat.ConversationID
+	streamCh    <-chan chat.StreamEvent
+	cancel      context.CancelFunc
+	keys        mainKeyMap
+	renderer    *glamour.TermRenderer
 }
 
-// ChatResponseMsg is delivered when the LLM returns a response
-type ChatResponseMsg struct {
-	Message llm.Message
-	Err     error
-}
+// ChatStreamEventMsg carries streaming events from the chat service
+type ChatStreamEventMsg struct{ Ev chat.StreamEvent }
+type ChatStreamClosedMsg struct{}
 
-func NewMainCmp(manager *llm.Manager) MainCmp {
+func NewMainCmp(service chat.Service) MainCmp {
 	// Initialize with a sane default renderer; will be resized on first ComponentSizeMsg
 	var r *glamour.TermRenderer
 	if tmp, err := glamour.NewTermRenderer(
@@ -44,9 +44,9 @@ func NewMainCmp(manager *llm.Manager) MainCmp {
 		r = tmp
 	}
 	return MainCmp{
-		keys:       DefaultMainKeyMap,
-		llmManager: manager,
-		renderer:   r,
+		keys:        DefaultMainKeyMap,
+		chatService: service,
+		renderer:    r,
 	}
 }
 
@@ -85,28 +85,59 @@ func (m MainCmp) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if text == "" {
 			return newM, nil
 		}
-		// Append user message
-		newM.messages = append(newM.messages, llm.Message{Role: "user", Content: text})
-		innerW, _ := newM.innerDimensions()
-		newM.vp.SetContent(newM.renderMessages(innerW))
-		newM.vp.GotoBottom()
-
-		// If we have an LLM, fire off generation
-		if newM.llmManager != nil {
-			history := append([]llm.Message(nil), newM.messages...)
-			cmd := func() tea.Msg {
-				resp, err := newM.llmManager.Generate(context.Background(), history)
-				return ChatResponseMsg{Message: resp, Err: err}
+		if newM.chatService != nil {
+			ctx := context.Background()
+			if newM.convID == "" {
+				if id, err := newM.chatService.NewConversation(ctx, nil); err == nil {
+					newM.convID = id
+				} else {
+					return newM, nil
+				}
 			}
-			return newM, cmd
-		}
-	case ChatResponseMsg:
-		if msg.Err == nil && msg.Message.Content != "" {
-			newM.messages = append(newM.messages, llm.Message{Role: "assistant", Content: msg.Message.Content, Provider: msg.Message.Provider, ID: msg.Message.ID})
+			// Update local view first
+			newM.messages = append(newM.messages, chat.Message{Role: chat.RoleUser, Content: text})
+			// Append an assistant placeholder locally so we can stream into it
+			newM.messages = append(newM.messages, chat.Message{Role: chat.RoleAssistant, Content: ""})
 			innerW, _ := newM.innerDimensions()
 			newM.vp.SetContent(newM.renderMessages(innerW))
 			newM.vp.GotoBottom()
+
+			// Persist user message and start streaming in the background
+			_, _ = newM.chatService.AddUserMessage(ctx, newM.convID, text, nil)
+			events, cancel, err := newM.chatService.StartAssistantStream(ctx, newM.convID, chat.GenerateOptions{})
+			if err == nil {
+				newM.streamCh = events
+				newM.cancel = cancel
+				return newM, newM.readNextStreamCmd()
+			}
 		}
+	case ChatStreamEventMsg:
+		// Append delta to the last assistant message locally
+		if len(newM.messages) > 0 {
+			last := len(newM.messages) - 1
+			if newM.messages[last].Role == chat.RoleAssistant && msg.Ev.Delta != "" {
+				newM.messages[last].Content += msg.Ev.Delta
+				innerW, _ := newM.innerDimensions()
+				newM.vp.SetContent(newM.renderMessages(innerW))
+				newM.vp.GotoBottom()
+			}
+		}
+		if msg.Ev.Err != nil || msg.Ev.Done {
+			if newM.cancel != nil {
+				newM.cancel()
+			}
+			newM.streamCh = nil
+			newM.cancel = nil
+			return newM, nil
+		}
+		return newM, newM.readNextStreamCmd()
+	case ChatStreamClosedMsg:
+		if newM.cancel != nil {
+			newM.cancel()
+		}
+		newM.streamCh = nil
+		newM.cancel = nil
+		return newM, nil
 	case tea.KeyPressMsg:
 		if !m.focused {
 			return newM, nil
@@ -169,14 +200,17 @@ func (m MainCmp) IsFocused() bool { return m.focused }
 
 func (m MainCmp) Clone() layout.Focusable {
 	return MainCmp{
-		focused:    m.focused,
-		width:      m.width,
-		height:     m.height,
-		vp:         m.vp,
-		messages:   append([]llm.Message(nil), m.messages...),
-		llmManager: m.llmManager,
-		keys:       m.keys,
-		renderer:   m.renderer,
+		focused:     m.focused,
+		width:       m.width,
+		height:      m.height,
+		vp:          m.vp,
+		messages:    append([]chat.Message(nil), m.messages...),
+		chatService: m.chatService,
+		convID:      m.convID,
+		streamCh:    m.streamCh,
+		cancel:      m.cancel,
+		keys:        m.keys,
+		renderer:    m.renderer,
 	}
 }
 
@@ -184,30 +218,63 @@ func (m MainCmp) Bindings() []key.Binding {
 	return []key.Binding{m.keys.Redraw, m.keys.Create, m.keys.ShowDialog}
 }
 
+// readNextStreamCmd reads a single event from the current stream channel.
+// It returns ChatStreamClosedMsg when the stream channel is nil or closed.
+func (m MainCmp) readNextStreamCmd() tea.Cmd {
+	ch := m.streamCh
+	return func() tea.Msg {
+		if ch == nil {
+			return ChatStreamClosedMsg{}
+		}
+		ev, ok := <-ch
+		if !ok {
+			return ChatStreamClosedMsg{}
+		}
+		return ChatStreamEventMsg{Ev: ev}
+	}
+}
+
 func (m MainCmp) renderMessages(innerWidth int) string {
 	if len(m.messages) == 0 {
 		return ""
 	}
 	var b strings.Builder
-	for i, msg := range m.messages {
-		if i > 0 {
-			b.WriteString("\n\n")
-		}
-		// role header
-		role := msg.Role
+	for _, msg := range m.messages {
+		role := string(msg.Role)
 		if role == "" {
 			role = "assistant"
 		}
-		b.WriteString(fmt.Sprintf("%s:\n", role))
+
+		// Style the role label
+		var label string
+		switch role {
+		case string(chat.RoleUser):
+			label = MessageLabelUser.Render("User:")
+		case string(chat.RoleSystem):
+			label = MessageLabelSystem.Render("System:")
+		default:
+			label = MessageLabelAssistant.Render("Assistant:")
+		}
+
+		var body string
 		if m.renderer != nil {
 			if out, err := m.renderer.Render(msg.Content); err == nil {
-				b.WriteString(out)
+				body = out
 			} else {
-				b.WriteString(hardWrap(msg.Content, innerWidth))
+				body = hardWrap(msg.Content, innerWidth)
 			}
 		} else {
-			b.WriteString(hardWrap(msg.Content, innerWidth))
+			body = hardWrap(msg.Content, innerWidth)
 		}
+
+		// Compose a message block with label and content
+		block := lipgloss.JoinVertical(
+			lipgloss.Left,
+			label,
+			body,
+		)
+
+		b.WriteString("\n" + MessageBlock.Render(block))
 	}
 	return b.String()
 }

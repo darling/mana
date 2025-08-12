@@ -6,6 +6,7 @@ import (
 	"github.com/urfave/cli/v3"
 
 	"github.com/darling/mana/cmd"
+	"github.com/darling/mana/pkg/chat"
 	"github.com/darling/mana/pkg/llm"
 	_ "github.com/darling/mana/pkg/llm/providers/openrouter"
 	"github.com/darling/mana/pkg/tui"
@@ -16,6 +17,7 @@ func New(buildInfo version.BuildInfo) *cli.Command {
 	var (
 		openRouterAPIKey string
 		llmManager       *llm.Manager
+		chatService      chat.Service
 	)
 
 	return &cli.Command{
@@ -23,7 +25,7 @@ func New(buildInfo version.BuildInfo) *cli.Command {
 		Usage:   "The cutest LLM interface for your terminal",
 		Version: buildInfo.GetVersion(),
 		Action: func(ctx context.Context, c *cli.Command) error {
-			return tui.Run(llmManager)
+			return tui.Run(chatService)
 		},
 		Flags: []cli.Flag{
 			&cli.StringFlag{
@@ -46,6 +48,9 @@ func New(buildInfo version.BuildInfo) *cli.Command {
 					return ctx, err
 				}
 				llmManager = manager
+				// Wire chat service with in-memory store for now
+				store := chat.NewMemoryStore()
+				chatService = chat.NewDefaultService(store, llmManager)
 			}
 
 			return ctx, nil
